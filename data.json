@@ -1,0 +1,14 @@
+{
+  "users": [
+    {
+      "username": "ali",
+      "password": "ali"
+    }
+  ],
+  "attendance": [
+    {
+      "username": "ali",
+      "date": "2025-07-03"
+    }
+  ]
+}
