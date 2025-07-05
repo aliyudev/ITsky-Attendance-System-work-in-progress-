@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Generator - ITSky TE</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <style>
+        .qr-container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        
+        .qr-code {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+        }
+        
+        .url-display {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        
+        .instructions h3 {
+            margin-top: 0;
+            color: #1976d2;
+        }
+        
+        .instructions ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="qr-container">
+        <img src="itskylogo.png" alt="ITSky Logo" style="width: 150px; margin-bottom: 20px;">
+        <h1>Attendance QR Code Generator</h1>
+        <p>Generate QR codes for the wall-mounted attendance system</p>
+        
+        <div class="instructions">
+            <h3>How to Use:</h3>
+            <ul>
+                <li>Generate a QR code pointing to the attendance system</li>
+                <li>Print and post the QR code on the wall at reception</li>
+                <li>Employees scan the QR code to access the attendance system</li>
+                <li>System verifies location via WiFi network and IP geolocation</li>
+                <li>Only employees at the office location can clock in</li>
+            </ul>
+        </div>
+        
+        <div class="form-group">
+            <label for="base-url">Base URL:</label>
+            <input type="text" id="base-url" value="http://localhost:3000" style="width: 100%; margin-bottom: 10px;">
+        </div>
+        
+        <button onclick="generateQR()" class="btn btn-primary">Generate QR Code</button>
+        
+        <div id="qr-result" style="display: none;">
+            <div class="url-display" id="url-display"></div>
+            <div class="qr-code" id="qr-code"></div>
+            <button onclick="printQR()" class="btn btn-secondary">Print QR Code</button>
+        </div>
+    </div>
+
+    <script>
+        function generateQR() {
+            const baseUrl = document.getElementById('base-url').value.trim();
+            const attendanceUrl = `${baseUrl}/attendance.html`;
+            
+            // Display the URL
+            document.getElementById('url-display').textContent = attendanceUrl;
+            
+            // Generate QR code
+            const qrContainer = document.getElementById('qr-code');
+            qrContainer.innerHTML = '';
+            
+            QRCode.toCanvas(qrContainer, attendanceUrl, {
+                width: 300,
+                margin: 2,
+                color: {
+                    dark: '#000000',
+                    light: '#FFFFFF'
+                }
+            }, function (error) {
+                if (error) {
+                    console.error('QR Code generation error:', error);
+                    qrContainer.innerHTML = '<p style="color: red;">Error generating QR code</p>';
+                }
+            });
+            
+            // Show result
+            document.getElementById('qr-result').style.display = 'block';
+        }
+        
+        function printQR() {
+            window.print();
+        }
+        
+        // Auto-generate QR code on page load
+        window.onload = function() {
+            generateQR();
+        };
+    </script>
+</body>
+</html> 

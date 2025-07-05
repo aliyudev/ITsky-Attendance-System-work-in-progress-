@@ -5,6 +5,9 @@
 const userNameSpan = document.getElementById('user-name');
 const clockinBtn = document.getElementById('clockin-btn');
 const clockinMsg = document.getElementById('clockin-message');
+const locationStatus = document.getElementById('location-status');
+const statusIndicator = document.getElementById('status-indicator');
+const statusText = document.getElementById('status-text');
 const calendarDiv = document.getElementById('calendar');
 const logoutBtn = document.getElementById('logout-btn');
 
@@ -28,7 +31,46 @@ showDashboard();
 clockinBtn.onclick = async () => {
   clockinBtn.disabled = true;
   clockinMsg.textContent = '';
+  locationStatus.style.display = 'block';
+  
   try {
+    // Show location verification status
+    statusIndicator.style.background = '#ffa500'; // Orange - checking
+    statusText.textContent = 'Requesting GPS location...';
+    
+    // First verify location
+    const position = await getGPSLocation();
+    
+    if (!position) {
+      throw new Error('GPS location is required. Please allow location access.');
+    }
+    
+    statusText.textContent = 'Verifying location with server...';
+    
+    // Verify location with server
+    const locationRes = await fetch('/api/verify-location', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy
+      })
+    });
+    
+    const locationData = await locationRes.json();
+    
+    if (!locationData.allowed) {
+      statusIndicator.style.background = '#f44336'; // Red - error
+      statusText.textContent = `Access denied: ${locationData.distance}m from office`;
+      throw new Error(`Access denied: You must be at the office location (${locationData.distance}m from office)`);
+    }
+    
+    statusIndicator.style.background = '#4CAF50'; // Green - success
+    statusText.textContent = `Location verified (${locationData.distance}m from office)`;
+    
+    clockinMsg.textContent = 'Clocking in...';
+    
     // Send clock in request
     const res = await fetch('/api/clockin', {
       method: 'POST',
@@ -36,13 +78,44 @@ clockinBtn.onclick = async () => {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Clock in failed');
-    clockinMsg.textContent = data.message;
+    
+    clockinMsg.textContent = `✅ ${data.message}`;
+    statusText.textContent = `✅ Clocked in successfully (${locationData.distance}m from office)`;
     loadCalendar();
   } catch (err) {
+    statusIndicator.style.background = '#f44336'; // Red - error
+    statusText.textContent = err.message;
     clockinMsg.textContent = err.message;
   }
   clockinBtn.disabled = false;
 };
+
+// Get GPS location from browser
+function getGPSLocation() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+    
+    const options = {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0 // Force fresh location
+    };
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve(position);
+      },
+      (error) => {
+        console.log('GPS Location error:', error.message);
+        resolve(null);
+      },
+      options
+    );
+  });
+}
 
 // Handle logout
 logoutBtn.onclick = () => {

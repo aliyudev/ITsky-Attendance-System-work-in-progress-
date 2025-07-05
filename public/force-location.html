@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Force Location Permission</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px;
+            width: 100%;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            border-left: 4px solid #007bff;
+        }
+        .error {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+        .success {
+            background: #e8f5e8;
+            border-left-color: #4caf50;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Force Location Permission</h1>
+        <p>This page will help force Chrome to show location permission options for localhost.</p>
+        
+        <div class="result warning">
+            <h3>⚠️ Before You Start:</h3>
+            <ol>
+                <li>Make sure GPS is enabled on your device</li>
+                <li>Go outside or near a window for better GPS signal</li>
+                <li>Close and reopen Chrome completely</li>
+                <li>Then click the button below</li>
+            </ol>
+        </div>
+        
+        <button onclick="forceLocationPermission()" class="btn">🔍 Force Location Request</button>
+        <button onclick="checkPermission()" class="btn" style="background: #28a745;">📋 Check Permission Status</button>
+        
+        <div id="results"></div>
+        
+        <div class="result">
+            <h3>💡 If It Still Doesn't Work:</h3>
+            <ol>
+                <li><strong>Try a different browser:</strong> Safari, Firefox, or Edge</li>
+                <li><strong>Use desktop Chrome:</strong> Test on your computer first</li>
+                <li><strong>Check device settings:</strong> Make sure location services are on</li>
+                <li><strong>Try incognito mode:</strong> Open Chrome in incognito/private mode</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function forceLocationPermission() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<div class="result">🔄 Forcing location permission request...</div>';
+            
+            if (!navigator.geolocation) {
+                results.innerHTML = '<div class="result error">❌ Geolocation not supported</div>';
+                return;
+            }
+            
+            // Try multiple times with different options
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 20000,
+                maximumAge: 0
+            };
+            
+            // First attempt
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    showSuccess(position);
+                },
+                (error) => {
+                    // If first attempt fails, try again with different options
+                    console.log('First attempt failed:', error.message);
+                    
+                    const options2 = {
+                        enableHighAccuracy: false,
+                        timeout: 30000,
+                        maximumAge: 60000
+                    };
+                    
+                    navigator.geolocation.getCurrentPosition(
+                        (position2) => {
+                            showSuccess(position2);
+                        },
+                        (error2) => {
+                            showError(error2);
+                        },
+                        options2
+                    );
+                },
+                options
+            );
+        }
+        
+        function showSuccess(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const accuracy = position.coords.accuracy;
+            
+            const officeLat = 9.0820;
+            const officeLng = 7.3983;
+            const distance = calculateDistance(lat, lng, officeLat, officeLng);
+            
+            const results = document.getElementById('results');
+            results.innerHTML = `
+                <div class="result success">
+                    <h3>✅ Location Permission Granted!</h3>
+                    <p><strong>Your Location:</strong></p>
+                    <p>Latitude: ${lat}</p>
+                    <p>Longitude: ${lng}</p>
+                    <p>Accuracy: ${accuracy} meters</p>
+                    <hr>
+                    <p><strong>Distance to Office:</strong> ${Math.round(distance)} meters (${(distance/1000).toFixed(2)} km)</p>
+                    <p><strong>Status:</strong> ${distance <= 10000 ? '✅ Within range' : '❌ Too far'}</p>
+                    <hr>
+                    <p><strong>Next Step:</strong> Now try the main attendance system!</p>
+                </div>
+            `;
+        }
+        
+        function showError(error) {
+            let errorMsg = 'Unknown error occurred';
+            let suggestion = '';
+            
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    errorMsg = '❌ Location permission denied';
+                    suggestion = 'Try going to Chrome Settings → Site Settings → Location and allow localhost, or try a different browser.';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMsg = '❌ Location information unavailable';
+                    suggestion = 'Make sure GPS is enabled in your device settings and try going outside.';
+                    break;
+                case error.TIMEOUT:
+                    errorMsg = '❌ Location request timed out';
+                    suggestion = 'Try going outside for better GPS signal and try again.';
+                    break;
+            }
+            
+            const results = document.getElementById('results');
+            results.innerHTML = `
+                <div class="result error">
+                    <h3>${errorMsg}</h3>
+                    <p><strong>Suggestion:</strong> ${suggestion}</p>
+                    <p><strong>Error Code:</strong> ${error.code}</p>
+                    <p><strong>Error Message:</strong> ${error.message}</p>
+                </div>
+            `;
+        }
+        
+        function checkPermission() {
+            const results = document.getElementById('results');
+            
+            if (!navigator.permissions) {
+                results.innerHTML = '<div class="result error">❌ Permissions API not supported</div>';
+                return;
+            }
+            
+            navigator.permissions.query({name: 'geolocation'}).then((result) => {
+                let status = 'Unknown';
+                let color = '#007bff';
+                
+                switch(result.state) {
+                    case 'granted':
+                        status = '✅ Granted';
+                        color = '#28a745';
+                        break;
+                    case 'denied':
+                        status = '❌ Denied';
+                        color = '#dc3545';
+                        break;
+                    case 'prompt':
+                        status = '❓ Prompt (will ask for permission)';
+                        color = '#ffc107';
+                        break;
+                }
+                
+                results.innerHTML = `
+                    <div class="result" style="border-left-color: ${color}">
+                        <h3>📋 Permission Status</h3>
+                        <p><strong>Location Permission:</strong> ${status}</p>
+                        <p><strong>State:</strong> ${result.state}</p>
+                    </div>
+                `;
+            });
+        }
+        
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Earth's radius in meters
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return R * c; // Distance in meters
+        }
+    </script>
+</body>
+</html> 

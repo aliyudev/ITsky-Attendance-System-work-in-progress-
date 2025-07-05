@@ -23,8 +23,14 @@
         <button id="logout-btn">Logout</button>
       </div>
       <div class="clockin-section">
-        <button id="clockin-btn">Clock In</button>
+        <button id="clockin-btn">Clock In with Location</button>
         <div id="clockin-message"></div>
+        <div id="location-status" style="margin-top: 10px; padding: 10px; border-radius: 5px; display: none;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div id="status-indicator" style="width: 20px; height: 20px; border-radius: 50%; background: #ffa500;"></div>
+            <span id="status-text">Verifying location...</span>
+          </div>
+        </div>
       </div>
       <div class="stats-section">
         <h3>Attendance Calendar (This Month)</h3>

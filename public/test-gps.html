@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS Test - ITSky TE</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success { border-left: 4px solid #28a745; }
+        .error { border-left: 4px solid #dc3545; }
+    </style>
+</head>
+<body>
+    <h1>GPS Location Test</h1>
+    <p>Test GPS location functionality</p>
+    
+    <button class="test-button" onclick="testGPS()">Test GPS Location</button>
+    <button class="test-button" onclick="testServer()">Test Server Verification</button>
+    
+    <div id="result" class="result" style="display: none;"></div>
+    
+    <script>
+        async function testGPS() {
+            const result = document.getElementById('result');
+            result.style.display = 'block';
+            result.className = 'result';
+            result.textContent = 'Testing GPS location...';
+            
+            try {
+                if (!navigator.geolocation) {
+                    result.textContent = '❌ Geolocation not supported in this browser';
+                    result.className = 'result error';
+                    return;
+                }
+                
+                const position = await getGPSLocation();
+                
+                if (position) {
+                    let info = '✅ GPS Location Obtained:\n\n';
+                    info += `Latitude: ${position.coords.latitude}\n`;
+                    info += `Longitude: ${position.coords.longitude}\n`;
+                    info += `Accuracy: ${position.coords.accuracy}m\n`;
+                    info += `Altitude: ${position.coords.altitude || 'Not available'}\n`;
+                    info += `Speed: ${position.coords.speed || 'Not available'}\n`;
+                    info += `Heading: ${position.coords.heading || 'Not available'}\n`;
+                    info += `Timestamp: ${new Date(position.timestamp).toLocaleString()}\n`;
+                    
+                    result.textContent = info;
+                    result.className = 'result success';
+                } else {
+                    result.textContent = '❌ GPS location failed or was denied';
+                    result.className = 'result error';
+                }
+                
+            } catch (error) {
+                result.textContent = `❌ Error: ${error.message}`;
+                result.className = 'result error';
+            }
+        }
+        
+        function getGPSLocation() {
+            return new Promise((resolve, reject) => {
+                const options = {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 300000
+                };
+                
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        console.log('GPS Location obtained:', position.coords);
+                        resolve(position);
+                    },
+                    (error) => {
+                        console.log('GPS Location error:', error.message);
+                        resolve(null);
+                    },
+                    options
+                );
+            });
+        }
+        
+        async function testServer() {
+            const result = document.getElementById('result');
+            result.style.display = 'block';
+            result.className = 'result';
+            result.textContent = 'Testing server verification...';
+            
+            try {
+                // First get GPS location
+                const position = await getGPSLocation();
+                
+                if (!position) {
+                    result.textContent = '❌ GPS location required for server test';
+                    result.className = 'result error';
+                    return;
+                }
+                
+                // Test server verification
+                const response = await fetch('/api/verify-location', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: position.coords.accuracy
+                    })
+                });
+                
+                const data = await response.json();
+                
+                let info = '📡 Server Response:\n\n';
+                info += `Status: ${response.status}\n`;
+                info += `Allowed: ${data.allowed ? 'Yes' : 'No'}\n`;
+                info += `Method: ${data.method}\n`;
+                
+                if (data.distance) {
+                    info += `Distance: ${data.distance}m from office\n`;
+                }
+                
+                if (data.accuracy) {
+                    info += `Accuracy: ${data.accuracy}m\n`;
+                }
+                
+                if (data.error) {
+                    info += `Error: ${data.error}\n`;
+                }
+                
+                result.textContent = info;
+                result.className = data.allowed ? 'result success' : 'result error';
+                
+            } catch (error) {
+                result.textContent = `❌ Server Error: ${error.message}`;
+                result.className = 'result error';
+            }
+        }
+    </script>
+</body>
+</html> 
