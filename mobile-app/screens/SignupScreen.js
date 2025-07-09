@@ -11,9 +11,7 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
-import axios from 'axios';
-
-const API_BASE_URL = 'http://192.168.2.196:3000/api';
+import { supabase } from '../config/api';
 
 export default function SignupScreen({ navigation }) {
   const [fullname, setFullname] = useState('');
@@ -41,12 +39,20 @@ export default function SignupScreen({ navigation }) {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/register`, {
-        fullname,
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: { data: { name: fullname } }
       });
-
+      if (error) throw error;
+      // Optionally, insert into users table for profile
+      const user = data.user;
+      if (user) {
+        const { error: profileError } = await supabase
+          .from('users')
+          .insert([{ id: user.id, name: fullname, email }]);
+        if (profileError) throw profileError;
+      }
       Alert.alert(
         'Success',
         'Account created successfully! Please sign in.',
@@ -61,7 +67,7 @@ export default function SignupScreen({ navigation }) {
       console.error('Signup error:', error);
       Alert.alert(
         'Signup Failed',
-        error.response?.data?.message || 'Registration failed. Please try again.'
+        error.message || 'Registration failed. Please try again.'
       );
     } finally {
       setIsLoading(false);
@@ -90,6 +96,7 @@ export default function SignupScreen({ navigation }) {
             <TextInput
               style={styles.input}
               placeholder="Enter your full name"
+              placeholderTextColor="#888"
               value={fullname}
               onChangeText={setFullname}
               autoCapitalize="words"
@@ -100,6 +107,7 @@ export default function SignupScreen({ navigation }) {
             <TextInput
               style={styles.input}
               placeholder="Enter your email (@itskysolutions.com)"
+              placeholderTextColor="#888"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -112,6 +120,7 @@ export default function SignupScreen({ navigation }) {
             <TextInput
               style={styles.input}
               placeholder="Enter your password"
+              placeholderTextColor="#888"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -123,6 +132,7 @@ export default function SignupScreen({ navigation }) {
             <TextInput
               style={styles.input}
               placeholder="Confirm your password"
+              placeholderTextColor="#888"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry

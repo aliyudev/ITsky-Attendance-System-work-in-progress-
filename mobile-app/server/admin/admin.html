@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard | ITSky Attendance</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Enhanced Admin Dashboard Styles */
+    .admin-header {
+      background: white;
+      color: #333;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid #e5e5e5;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .header-logo {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+    }
+    
+    .admin-info {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #e5e5e5;
+    }
+    
+    .admin-welcome {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    
+    .admin-role {
+      font-size: 14px;
+      color: #dc2626;
+    }
+    
+    .stats-header {
+      margin-bottom: 20px;
+    }
+    
+    .stats-title {
+      font-size: 20px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 5px;
+    }
+    
+    .stats-subtitle {
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .user-card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: transform 0.2s;
+    }
+    
+    .user-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .user-header {
+      margin-bottom: 12px;
+    }
+    
+    .user-name {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+    }
+    
+    .user-email {
+      font-size: 14px;
+      color: #666;
+      margin-top: 2px;
+    }
+    
+    .user-stats {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    
+    .stat-item {
+      text-align: center;
+      flex: 1;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+    
+    .stat-value {
+      font-size: 18px;
+      font-weight: bold;
+      color: #dc2626;
+    }
+    
+    .attendance-dates {
+      border-top: 1px solid #e5e5e5;
+      padding-top: 12px;
+    }
+    
+    .dates-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    
+    .dates-text {
+      font-size: 12px;
+      color: #666;
+      line-height: 16px;
+    }
+    
+    .actions-container {
+      margin-top: 20px;
+      margin-bottom: 40px;
+    }
+    
+    .action-button {
+      background: #dc2626;
+      color: white;
+      padding: 16px;
+      border-radius: 8px;
+      border: none;
+      width: 100%;
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .action-button:hover {
+      background: #b91c1c;
+    }
+    
+    .loading-container {
+      text-align: center;
+      padding: 40px;
+    }
+    
+    .loading-spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #dc2626;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .loading-text {
+      font-size: 16px;
+      color: #666;
+    }
+    
+    .refresh-button {
+      background: #dc2626;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-left: 10px;
+    }
+    
+    .refresh-button:hover {
+      background: #b91c1c;
+    }
+    
+    .search-container {
+      margin-bottom: 20px;
+    }
+    
+    #search-box {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #dc2626;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    
+    .no-users {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="admin-header">
+              <div class="logo-container">
+          <img src="itskylogo.png" alt="ITSky Logo" class="header-logo">
+          <div class="logo" style="color: #dc2626;">ITSky</div>
+          <div class="subtitle" style="color: #666;">Admin Dashboard</div>
+        </div>
+      <button id="logout-btn" class="refresh-button" style="background: #dc2626; color: white;">Logout</button>
+    </div>
+    
+    <div class="admin-info">
+      <div class="admin-welcome">Welcome, <span id="admin-email">Admin</span></div>
+      <div class="admin-role">Administrator</div>
+    </div>
+    
+    <div class="search-container">
+      <input type="text" id="search-box" placeholder="Search by email or name..." />
+    </div>
+    
+    <div class="stats-header">
+      <div class="stats-title">Employee Attendance Statistics</div>
+      <div class="stats-subtitle">Current Month: <span id="working-days">0</span> working days</div>
+    </div>
+    
+    <div id="admin-content">
+      <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading statistics...</div>
+      </div>
+    </div>
+    
+    <div class="actions-container">
+      <button class="action-button" onclick="showComingSoon('User management features coming soon!')">
+        Manage Users
+      </button>
+      <button class="action-button" onclick="showComingSoon('Export features coming soon!')">
+        Export Reports
+      </button>
+    </div>
+  </div>
+  <script src="admin.js"></script>
+</body>
+</html> 

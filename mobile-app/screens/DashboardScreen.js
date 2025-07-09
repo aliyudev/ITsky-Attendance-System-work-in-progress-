@@ -1,3 +1,21 @@
+/**
+ * DashboardScreen.js - Main User Dashboard
+ * 
+ * This is the primary screen for authenticated users in the ITSky Attendance mobile app.
+ * It provides a comprehensive interface for clocking in, viewing attendance statistics,
+ * and managing user sessions.
+ * 
+ * Features:
+ * - GPS-based clock-in with location verification
+ * - Real-time attendance calendar display
+ * - User authentication status management
+ * - Admin role detection and redirection
+ * - Offline data persistence with AsyncStorage
+ * 
+ * @author ITSky Solutions
+ * @version 1.3.0
+ */
+
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -6,28 +24,65 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
+  Image,
+  SafeAreaView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
-import axios from 'axios';
+import { supabase } from '../config/api';
 
-// Replace with your computer's IP address
-const API_BASE_URL = 'http://192.168.2.196:3000/api'; // Your computer's IP address (mobile hotspot)
-
+/**
+ * DashboardScreen Component
+ * 
+ * Main dashboard interface for authenticated users. Handles:
+ * - User authentication status
+ * - GPS location verification
+ * - Attendance tracking
+ * - Calendar display
+ * - Session management
+ * 
+ * @param {Object} navigation - React Navigation object for screen transitions
+ */
 export default function DashboardScreen({ navigation }) {
-  const [userEmail, setUserEmail] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [clockInMessage, setClockInMessage] = useState('');
-  const [locationStatus, setLocationStatus] = useState('');
-  const [statusIndicator, setStatusIndicator] = useState('#ffa500');
-  const [attendanceStats, setAttendanceStats] = useState(null);
-  const [alreadyClockedIn, setAlreadyClockedIn] = useState(false);
+  // State management for user interface and data
+  const [userEmail, setUserEmail] = useState(''); // Current user's email
+  const [isLoading, setIsLoading] = useState(false); // Loading state for clock-in process
+  const [clockInMessage, setClockInMessage] = useState(''); // Success/error messages
+  const [locationStatus, setLocationStatus] = useState(''); // GPS status messages
+  const [statusIndicator, setStatusIndicator] = useState('#ffa500'); // Visual status indicator color
+  const [attendanceStats, setAttendanceStats] = useState(null); // User's attendance data
+  const [alreadyClockedIn, setAlreadyClockedIn] = useState(false); // Prevents duplicate clock-ins
+  const [selectedDayInfo, setSelectedDayInfo] = useState(null); // Info for clicked day
 
+  /**
+   * Component initialization effect
+   * Runs on component mount to set up user data and check authentication
+   */
   useEffect(() => {
+    checkUserType();
     loadUserData();
     loadCalendar();
   }, []);
 
+  /**
+   * Check if current user is an admin and redirect if necessary
+   * Admins should be redirected to the admin dashboard
+   */
+  const checkUserType = async () => {
+    try {
+      const isAdmin = await AsyncStorage.getItem('isAdmin');
+      if (isAdmin === 'true') {
+        navigation.replace('AdminDashboard');
+      }
+    } catch (error) {
+      console.error('Error checking user type:', error);
+    }
+  };
+
+  /**
+   * Load user email from local storage
+   * Displays the current user's email in the welcome message
+   */
   const loadUserData = async () => {
     try {
       const email = await AsyncStorage.getItem('userEmail');
@@ -37,28 +92,60 @@ export default function DashboardScreen({ navigation }) {
     }
   };
 
+  /**
+   * Load user's attendance statistics and calendar data
+   * Fetches data from the server and updates the UI
+   */
   const loadCalendar = async () => {
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      const response = await axios.get(`${API_BASE_URL}/stats`, {
-        headers: { Authorization: token },
-      });
-      setAttendanceStats(response.data);
-      
-      // Check if already clocked in today
+      const userId = await AsyncStorage.getItem('userId');
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+      const monthStart = `${year}-${month}-01`;
+      const monthEnd = `${year}-${month}-31`;
+      const { data: records, error } = await supabase
+        .from('attendance')
+        .select('id, clock_in_time')
+        .eq('user_id', userId)
+        .gte('clock_in_time', monthStart)
+        .lte('clock_in_time', monthEnd);
+      if (error) throw error;
+      // Format records for calendar, include time
+      const attendanceRecords = (records || []).map(r => ({
+        date: r.clock_in_time.slice(0, 10),
+        time: r.clock_in_time.slice(11, 19),
+        full: r.clock_in_time
+      }));
+      // Calculate working days
+      const daysInMonth = new Date(year, parseInt(month), 0).getDate();
+      let workingDays = 0;
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, parseInt(month) - 1, day);
+        const dayOfWeek = date.getDay();
+        if (dayOfWeek >= 1 && dayOfWeek <= 4) workingDays++;
+      }
+      const daysPresent = attendanceRecords.length;
+      setAttendanceStats({ daysPresent, daysThisMonth: workingDays, records: attendanceRecords });
+      // Check if user has already clocked in today
       const today = new Date().toISOString().slice(0, 10);
-      const todayRecord = response.data.records.find(record => record.date === today);
+      const todayRecord = attendanceRecords.find(record => record.date === today);
       setAlreadyClockedIn(!!todayRecord);
-      
       if (todayRecord) {
-        setClockInMessage('✅ Already clocked in today');
-        setStatusIndicator('#4CAF50'); // Green
+        setClockInMessage(`✅ Already clocked in today at ${todayRecord.time}`);
+        setStatusIndicator('#4CAF50');
       }
     } catch (error) {
       console.error('Error loading stats:', error);
     }
   };
 
+  /**
+   * Request location permissions from the user
+   * Required for GPS-based attendance verification
+   * 
+   * @returns {Promise<boolean>} True if permission granted, false otherwise
+   */
   const requestLocationPermission = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
@@ -72,6 +159,12 @@ export default function DashboardScreen({ navigation }) {
     return true;
   };
 
+  /**
+   * Get current GPS location with high accuracy
+   * Used for office proximity verification
+   * 
+   * @returns {Promise<Object|null>} Location object or null if failed
+   */
   const getGPSLocation = async () => {
     try {
       const location = await Location.getCurrentPositionAsync({
@@ -85,113 +178,68 @@ export default function DashboardScreen({ navigation }) {
     }
   };
 
+  /**
+   * Main clock-in function with comprehensive error handling
+   * Handles the entire clock-in process including:
+   * - Permission requests
+   * - GPS location acquisition
+   * - Server verification
+   * - Attendance recording
+   * - UI updates
+   */
   const handleClockIn = async () => {
     if (alreadyClockedIn) {
       Alert.alert(
         'Already Clocked In',
-        'You have already clocked in today. You can only clock in once per day.',
+        'You have already clocked in today.',
         [{ text: 'OK' }]
       );
       return;
     }
-
     setIsLoading(true);
     setClockInMessage('');
     setLocationStatus('');
-    setStatusIndicator('#ffa500'); // Orange - checking
-    
+    setStatusIndicator('#ffa500');
     try {
-      // Step 1: Request location permission
       setLocationStatus('Requesting GPS location...');
       const hasPermission = await requestLocationPermission();
       if (!hasPermission) {
         setIsLoading(false);
         return;
       }
-
-      // Step 2: Get current location
       const position = await getGPSLocation();
       if (!position) {
         throw new Error('GPS location is required. Please allow location access.');
       }
-
-      setLocationStatus('Verifying location with server...');
-
-      // Step 3: Verify location with server
-      const locationRes = await axios.post(`${API_BASE_URL}/verify-location`, {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        accuracy: position.coords.accuracy
-      });
-
-      const locationData = locationRes.data;
-
-      if (!locationData.allowed) {
-        setStatusIndicator('#f44336'); // Red - error
-        setLocationStatus(`Access denied: ${locationData.distance}m from office`);
-        throw new Error(`Access denied: You must be at the office location (${locationData.distance}m from office)`);
-      }
-
-      setStatusIndicator('#4CAF50'); // Green - success
-      setLocationStatus(`Location verified (${locationData.distance}m from office)`);
-      setClockInMessage('Clocking in...');
-
-      // Step 4: Clock in
-      const token = await AsyncStorage.getItem('userToken');
-      const clockInResponse = await axios.post(
-        `${API_BASE_URL}/clockin`,
-        {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy
-        },
-        {
-          headers: { Authorization: token },
-        }
-      );
-
-      setClockInMessage(`✅ ${clockInResponse.data.message}`);
-      setLocationStatus(`✅ Clocked in successfully (${locationData.distance}m from office)`);
+      const { coords } = position;
+      const userId = await AsyncStorage.getItem('userId');
+      // Insert attendance record in Supabase
+      const { error } = await supabase
+        .from('attendance')
+        .insert([{
+          user_id: userId,
+          location_lat: coords.latitude,
+          location_lng: coords.longitude,
+          accuracy: coords.accuracy
+        }]);
+      if (error) throw error;
+      setClockInMessage('✅ Clock-in successful!');
+      setStatusIndicator('#4CAF50');
       setAlreadyClockedIn(true);
-      
-      // Reload attendance stats
       loadCalendar();
-
     } catch (error) {
-      console.error('Clock in error:', error);
-      setStatusIndicator('#f44336'); // Red - error
-      
-      // Better error handling for different status codes
-      if (error.response?.status === 400) {
-        const errorMessage = error.response.data?.message;
-        if (errorMessage === 'Already clocked in today') {
-          setLocationStatus('Already clocked in today');
-          setClockInMessage('You have already clocked in for today');
-        } else {
-          setLocationStatus('Bad Request');
-          setClockInMessage(errorMessage || 'Invalid request data');
-        }
-      } else if (error.response?.status === 403) {
-        const errorData = error.response.data;
-        if (errorData.details) {
-          setLocationStatus(`Location Error: ${errorData.details.error || errorData.message}`);
-          setClockInMessage(`Access Denied: ${errorData.details.distance}m from office`);
-        } else {
-          setLocationStatus('Access Denied: Location verification failed');
-          setClockInMessage('You must be at the office location to clock in');
-        }
-      } else if (error.response?.status === 401) {
-        setLocationStatus('Authentication Error');
-        setClockInMessage('Please login again');
-      } else {
-        setLocationStatus(error.message);
-        setClockInMessage(error.message);
-      }
+      setClockInMessage('❌ Clock-in failed.');
+      setStatusIndicator('#dc2626');
+      Alert.alert('Clock-in Failed', error.message || 'Unable to clock in.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  /**
+   * Handle user logout with confirmation
+   * Clears all stored authentication data and redirects to login
+   */
   const handleLogout = async () => {
     Alert.alert(
       'Logout',
@@ -210,6 +258,12 @@ export default function DashboardScreen({ navigation }) {
     );
   };
 
+  /**
+   * Render the attendance calendar for the current month
+   * Creates a visual calendar showing present, absent, and non-working days
+   * 
+   * @returns {JSX.Element|null} Calendar component or null if no data
+   */
   const renderCalendar = () => {
     if (!attendanceStats) return null;
 
@@ -217,13 +271,17 @@ export default function DashboardScreen({ navigation }) {
     const year = now.getFullYear();
     const month = now.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const presentDays = new Set(attendanceStats.records.map(r => Number(r.date.split('-')[2])));
+    const presentDays = new Set(
+      attendanceStats.records
+        .filter(r => r.date)
+        .map(r => Number(r.date.split('-')[2]))
+    );
     const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const firstDay = new Date(year, month, 1).getDay();
 
     let calendarRows = [];
     
-    // Header row
+    // Create header row with day names
     let headerRow = [];
     weekDays.forEach(day => {
       headerRow.push(
@@ -238,13 +296,17 @@ export default function DashboardScreen({ navigation }) {
       </View>
     );
 
-    // Calendar days
+    // Create calendar grid
     let currentRow = [];
+    
+    // Add empty cells for days before the first day of the month
     for (let i = 0; i < firstDay; i++) {
       currentRow.push(<View key={`empty-${i}`} style={styles.calendarCell} />);
     }
 
+    // Add cells for each day of the month
     for (let day = 1; day <= daysInMonth; day++) {
+      // Start new row when we reach the end of a week
       if ((firstDay + day - 1) % 7 === 0 && day !== 1) {
         calendarRows.push(
           <View key={`row-${Math.floor((firstDay + day - 1) / 7)}`} style={styles.calendarRow}>
@@ -254,17 +316,50 @@ export default function DashboardScreen({ navigation }) {
         currentRow = [];
       }
 
-      const isPresent = presentDays.has(day);
+      // Determine day type and styling
+      const date = new Date(year, month, day);
+      const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      const isWorkingDay = dayOfWeek >= 1 && dayOfWeek <= 4; // Monday to Thursday
+      const isFriday = dayOfWeek === 5; // Friday
+      const presentRecord = attendanceStats.records.find(r => Number(r.date.split('-')[2]) === day);
+      const isPresent = !!presentRecord;
+      
+      // Apply appropriate styling based on day type
+      let cellStyle = [styles.calendarCell];
+      let textStyle = [styles.calendarCellText];
+      
+      if (isPresent) {
+        cellStyle.push(styles.calendarCellPresent);
+        textStyle.push(styles.calendarCellTextPresent);
+      } else if (isWorkingDay) {
+        cellStyle.push(styles.calendarCellAbsent);
+        textStyle.push(styles.calendarCellTextAbsent);
+      } else if (isFriday) {
+        cellStyle.push(styles.calendarCellFriday);
+        textStyle.push(styles.calendarCellTextFriday);
+      } else {
+        cellStyle.push(styles.calendarCellWeekend);
+        textStyle.push(styles.calendarCellTextWeekend);
+      }
+      
+      // Make working days clickable
+      const handleDayPress = () => {
+        if (isWorkingDay) {
+          setSelectedDayInfo({
+            date: `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`,
+            time: presentRecord ? presentRecord.time : null,
+            isPresent
+          });
+        }
+      };
       currentRow.push(
-        <View key={day} style={[styles.calendarCell, isPresent && styles.calendarCellPresent]}>
-          <Text style={[styles.calendarCellText, isPresent && styles.calendarCellTextPresent]}>
-            {day}
-          </Text>
-        </View>
+        <TouchableOpacity key={day} style={cellStyle} onPress={handleDayPress} disabled={!isWorkingDay}>
+          <Text style={textStyle}>{day}</Text>
+        </TouchableOpacity>
       );
     }
 
-    // Add the last row
+    // Add the final row if it has content
     if (currentRow.length > 0) {
       calendarRows.push(
         <View key="last-row" style={styles.calendarRow}>
@@ -273,9 +368,27 @@ export default function DashboardScreen({ navigation }) {
       );
     }
 
+    // Month names for display
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+    
     return (
       <View style={styles.calendarContainer}>
+        <Text style={styles.monthTitle}>{monthNames[month]} {year}</Text>
         {calendarRows}
+        {/* Show time clocked in for selected day below calendar */}
+        {selectedDayInfo && (
+          <View style={{ marginTop: 12, alignItems: 'center' }}>
+            <Text style={{ fontSize: 16, fontWeight: 'bold' }}>
+              {selectedDayInfo.date}
+            </Text>
+            {selectedDayInfo.isPresent && selectedDayInfo.time ? (
+              <Text style={{ fontSize: 15, color: '#4CAF50' }}>Clocked in at: {selectedDayInfo.time}</Text>
+            ) : (
+              <Text style={{ fontSize: 15, color: '#dc2626' }}>Not clocked in</Text>
+            )}
+          </View>
+        )}
         <Text style={styles.statsText}>
           <Text style={styles.bold}>Days Present:</Text> {attendanceStats.daysPresent} / {attendanceStats.daysThisMonth}
         </Text>
@@ -283,15 +396,37 @@ export default function DashboardScreen({ navigation }) {
     );
   };
 
+  /**
+   * Main render function
+   * Returns the complete dashboard interface
+   */
   return (
-    <ScrollView style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      {/* Header section with logo, welcome message, and logout button */}
       <View style={styles.header}>
-        <Text style={styles.welcomeText}>Welcome, {userEmail}!</Text>
+        <View style={styles.headerLeft}>
+          <Image
+            source={require('../assets/itskylogo.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
+          <Text style={styles.welcomeText}>Welcome, {userEmail}!</Text>
+        </View>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
       </View>
 
+      {/* Scrollable content area for calendar */}
+      <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.statsSection}>
+          <Text style={styles.sectionTitle}>Attendance Calendar (This Month)</Text>
+          {renderCalendar()}
+        </View>
+      </ScrollView>
+
+      {/* Fixed bottom section with clock-in button */}
+      <View style={styles.bottomSection}>
       <View style={styles.clockInSection}>
         <TouchableOpacity
           style={[
@@ -307,6 +442,7 @@ export default function DashboardScreen({ navigation }) {
           </Text>
         </TouchableOpacity>
 
+          {/* Status messages */}
         {clockInMessage ? (
           <Text style={styles.clockInMessage}>{clockInMessage}</Text>
         ) : null}
@@ -317,35 +453,49 @@ export default function DashboardScreen({ navigation }) {
             <Text style={styles.locationStatusText}>{locationStatus}</Text>
           </View>
         ) : null}
-
-
       </View>
-
-      <View style={styles.statsSection}>
-        <Text style={styles.sectionTitle}>Attendance Calendar (This Month)</Text>
-        {renderCalendar()}
       </View>
-    </ScrollView>
+    </SafeAreaView>
   );
 }
 
+/**
+ * Component styles
+ * Defines the visual appearance of all dashboard elements
+ */
 const styles = StyleSheet.create({
+  // Main container with safe area support
   container: {
     flex: 1,
     backgroundColor: '#fff',
   },
+  
+  // Header section styling
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
     backgroundColor: '#fff',
-    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 15,
+  },
+  headerLogo: {
+    width: 60,
+    height: 30,
+    marginRight: 12,
   },
   welcomeText: {
     fontSize: 18,
     fontWeight: '600',
     color: '#111',
+    flex: 1,
   },
   logoutButton: {
     backgroundColor: '#dc2626',
@@ -358,15 +508,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  
+  // Scrollable content area
+  scrollContent: {
+    flex: 1,
+  },
+  
+  // Bottom section with clock-in functionality
+  bottomSection: {
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingBottom: 20,
+  },
   clockInSection: {
-    marginBottom: 24,
     paddingHorizontal: 20,
+    paddingTop: 20,
   },
   clockInButton: {
     backgroundColor: '#dc2626',
-    padding: 12,
-    borderRadius: 8,
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
+    marginBottom: 10,
   },
   buttonDisabled: {
     backgroundColor: '#aaa',
@@ -376,7 +540,7 @@ const styles = StyleSheet.create({
   },
   clockInButtonText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
   },
   clockInMessage: {
@@ -384,14 +548,15 @@ const styles = StyleSheet.create({
     color: '#198754',
     fontWeight: '600',
     fontSize: 14,
+    textAlign: 'center',
   },
   locationStatusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 10,
-    padding: 10,
+    padding: 12,
     backgroundColor: '#f8f9fa',
-    borderRadius: 5,
+    borderRadius: 8,
   },
   statusIndicator: {
     width: 20,
@@ -404,11 +569,13 @@ const styles = StyleSheet.create({
     color: '#666',
     flex: 1,
   },
+  
+  // Statistics section styling
   statsSection: {
     backgroundColor: '#f8f8f8',
     borderRadius: 8,
     padding: 16,
-    marginHorizontal: 20,
+    margin: 20,
   },
   sectionTitle: {
     fontSize: 18,
@@ -416,8 +583,17 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     color: '#111',
   },
+  
+  // Calendar styling
   calendarContainer: {
     marginTop: 8,
+  },
+  monthTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 12,
   },
   calendarRow: {
     flexDirection: 'row',
@@ -449,6 +625,19 @@ const styles = StyleSheet.create({
   calendarCellPresent: {
     backgroundColor: '#dc2626',
   },
+  calendarCellAbsent: {
+    backgroundColor: '#fef2f2',
+    borderWidth: 2,
+    borderColor: '#dc2626',
+  },
+  calendarCellWeekend: {
+    backgroundColor: '#f0f0f0',
+    opacity: 0.6,
+  },
+  calendarCellFriday: {
+    backgroundColor: '#f5f5f5',
+    opacity: 0.7,
+  },
   calendarCellText: {
     fontSize: 14,
     color: '#111',
@@ -456,6 +645,17 @@ const styles = StyleSheet.create({
   calendarCellTextPresent: {
     color: '#fff',
     fontWeight: '700',
+  },
+  calendarCellTextAbsent: {
+    color: '#dc2626',
+    fontWeight: '600',
+  },
+  calendarCellTextWeekend: {
+    color: '#888',
+    fontStyle: 'italic',
+  },
+  calendarCellTextFriday: {
+    color: '#aaa',
   },
   statsText: {
     marginTop: 8,

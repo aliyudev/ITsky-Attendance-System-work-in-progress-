@@ -8,11 +8,11 @@ import {
   ScrollView,
   RefreshControl,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
-
-const API_BASE_URL = 'http://192.168.2.196:3000/api';
+// Removed: import axios from 'axios';
+// Removed: import { getApiUrl } from '../config/api';
 
 export default function AdminDashboardScreen({ navigation }) {
   const [adminEmail, setAdminEmail] = useState('');
@@ -38,10 +38,14 @@ export default function AdminDashboardScreen({ navigation }) {
     setIsLoading(true);
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const response = await axios.get(`${API_BASE_URL}/admin/stats`, {
-        headers: { Authorization: token },
+      // Supabase client or direct fetch for stats
+      // For now, a placeholder for future implementation
+      // Example: const response = await axios.get(getApiUrl('/admin/stats'), { headers: { Authorization: token } });
+      // setStats(response.data);
+      setStats({
+        stats: [], // Removed example users
+        daysThisMonth: 22, // Placeholder for current month days
       });
-      setStats(response.data);
     } catch (error) {
       console.error('Error loading stats:', error);
       Alert.alert('Error', 'Failed to load attendance statistics');
@@ -105,7 +109,11 @@ export default function AdminDashboardScreen({ navigation }) {
           <View style={styles.attendanceDates}>
             <Text style={styles.datesLabel}>Attendance Dates:</Text>
             <Text style={styles.datesText}>
-              {user.records.slice(-5).join(', ')}
+              {user.records.map(record => {
+                const date = new Date(record).toLocaleDateString();
+                const time = new Date(record).toLocaleTimeString();
+                return `${date} ${time}`;
+              }).slice(-5).join(', ')}
               {user.records.length > 5 && '...'}
             </Text>
           </View>
@@ -118,6 +126,11 @@ export default function AdminDashboardScreen({ navigation }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.logoContainer}>
+          <Image
+            source={require('../assets/itskylogo.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
           <Text style={styles.logo}>ITSky</Text>
           <Text style={styles.subtitle}>Admin Dashboard</Text>
         </View>
@@ -179,7 +192,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   header: {
-    backgroundColor: '#dc2626',
+    backgroundColor: 'white', // Changed from '#dc2626' (red) to white
     paddingTop: 50,
     paddingBottom: 20,
     paddingHorizontal: 20,
@@ -189,22 +202,29 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 40,
+    height: 20,
+    marginRight: 10,
   },
   logo: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: 'white',
+    color: '#222', // Changed from 'white' to dark for contrast
   },
   subtitle: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: '#333', // Changed from 'rgba(255, 255, 255, 0.8)' to dark
     marginTop: 2,
   },
   logoutButton: {
     padding: 8,
   },
   logoutText: {
-    color: 'white',
+    color: '#222', // Changed from 'white' to dark
     fontSize: 16,
     fontWeight: '600',
   },
@@ -234,12 +254,13 @@ const styles = StyleSheet.create({
   statsTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
+    color: '#222', // Changed from red to dark
+    marginBottom: 4,
   },
   statsSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: '#666', // Use a neutral color
+    marginBottom: 12,
   },
   loadingContainer: {
     alignItems: 'center',
@@ -324,8 +345,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   actionButtonText: {
-    color: 'white',
+    color: '#222', // Changed from red to dark
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
 }); 

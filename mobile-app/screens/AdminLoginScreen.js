@@ -1,20 +1,9 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Image,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import { supabase } from '../config/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export default function LoginScreen({ navigation }) {
+export default function AdminLoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -24,9 +13,7 @@ export default function LoginScreen({ navigation }) {
       Alert.alert('Error', 'Please enter both email and password');
       return;
     }
-
     setIsLoading(true);
-
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -35,28 +22,24 @@ export default function LoginScreen({ navigation }) {
       if (error) throw error;
       const user = data.user;
       if (user) {
-        await AsyncStorage.setItem('userId', user.id);
-        await AsyncStorage.setItem('userEmail', user.email);
-        // Optionally fetch user profile to check is_admin
+        // Fetch user profile to check is_admin
         const { data: profile, error: profileError } = await supabase
           .from('users')
           .select('is_admin')
           .eq('id', user.id)
           .single();
         if (profileError) throw profileError;
-        await AsyncStorage.setItem('isAdmin', (profile.is_admin ? 'true' : 'false'));
         if (profile.is_admin) {
+          await AsyncStorage.setItem('userId', user.id);
+          await AsyncStorage.setItem('userEmail', user.email);
+          await AsyncStorage.setItem('isAdmin', 'true');
           navigation.replace('AdminDashboard');
         } else {
-          navigation.replace('Dashboard');
+          Alert.alert('Access Denied', 'You are not an admin.');
         }
       }
     } catch (error) {
-      console.error('Login error:', error);
-      Alert.alert(
-        'Login Failed',
-        error.message || 'Invalid credentials. Please try again.'
-      );
+      Alert.alert('Login Failed', error.message || 'Invalid admin credentials. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -74,16 +57,14 @@ export default function LoginScreen({ navigation }) {
             style={styles.logoImage}
             resizeMode="contain"
           />
-          <Text style={styles.subtitle}>Attendance System</Text>
+          <Text style={styles.subtitle}>Admin Login</Text>
         </View>
-
         <View style={styles.formContainer}>
-          <Text style={styles.title}>Sign In</Text>
-          
+          <Text style={styles.title}>Sign In as Admin</Text>
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
-              placeholder="Enter your email"
+              placeholder="Enter your admin email"
               placeholderTextColor="#888"
               value={email}
               onChangeText={setEmail}
@@ -92,7 +73,6 @@ export default function LoginScreen({ navigation }) {
               autoCorrect={false}
             />
           </View>
-
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
@@ -104,7 +84,6 @@ export default function LoginScreen({ navigation }) {
               autoCapitalize="none"
             />
           </View>
-
           <TouchableOpacity
             style={[styles.button, isLoading && styles.buttonDisabled]}
             onPress={handleLogin}
@@ -114,26 +93,12 @@ export default function LoginScreen({ navigation }) {
               {isLoading ? 'Signing In...' : 'Sign In'}
             </Text>
           </TouchableOpacity>
-
-          <Text style={styles.note}>
-            Location verification will be required when you clock in
-          </Text>
-
           <TouchableOpacity
             style={styles.linkButton}
-            onPress={() => navigation.navigate('Signup')}
+            onPress={() => navigation.goBack()}
           >
             <Text style={styles.linkText}>
-              Don't have an account? Sign Up
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={() => navigation.navigate('AdminLogin')}
-          >
-            <Text style={styles.linkText}>
-              Admin Login
+              Back to User Login
             </Text>
           </TouchableOpacity>
         </View>
@@ -191,40 +156,33 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#dc2626',
+    borderColor: '#ccc',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#f9f9f9',
   },
   button: {
     backgroundColor: '#dc2626',
-    padding: 12,
+    padding: 16,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 16,
   },
   buttonDisabled: {
-    backgroundColor: '#aaa',
+    opacity: 0.6,
   },
   buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  note: {
-    textAlign: 'center',
-    marginTop: 20,
-    color: '#666',
-    fontSize: 14,
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   linkButton: {
     marginTop: 20,
     alignItems: 'center',
   },
   linkText: {
-    color: '#dc2626',
+    color: '#2563eb',
     fontSize: 16,
-    textDecorationLine: 'underline',
   },
 }); 

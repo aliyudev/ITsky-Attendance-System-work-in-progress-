@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Sign In | ITSky Attendance</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Enhanced Admin Signin Styles */
+    .admin-header {
+      background: #dc2626;
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .header-logo {
+      width: 60px;
+      height: 60px;
+      object-fit: contain;
+      margin-bottom: 8px;
+    }
+    
+    .admin-logo {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    
+    .admin-subtitle {
+      font-size: 14px;
+      opacity: 0.8;
+    }
+    
+    .form-container {
+      background: white;
+      padding: 32px;
+      border-radius: 16px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    
+    .form-title {
+      font-size: 24px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 30px;
+      color: #dc2626;
+    }
+    
+    .input-container {
+      margin-bottom: 12px;
+    }
+    
+    .form-input {
+      border-width: 1px;
+      border-color: #dc2626;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 16px;
+      background-color: #fff;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    .form-input:focus {
+      outline: none;
+      border-color: #b91c1c;
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+    }
+    
+    .submit-button {
+      background-color: #dc2626;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      width: 100%;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      margin-top: 8px;
+    }
+    
+    .submit-button:hover {
+      background-color: #b91c1c;
+    }
+    
+    .submit-button:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
+    
+    .error-message {
+      color: #dc2626;
+      font-size: 14px;
+      margin-top: 8px;
+      text-align: center;
+    }
+    
+    .back-link {
+      text-align: center;
+      margin-top: 16px;
+    }
+    
+    .back-link a {
+      color: #dc2626;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    
+    .back-link a:hover {
+      text-decoration: underline;
+    }
+    
+    .loading-spinner {
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #dc2626;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-right: 8px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="admin-header">
+      <img src="itskylogo.png" alt="ITSky Logo" class="header-logo">
+      <div class="admin-logo">ITSky</div>
+      <div class="admin-subtitle">Admin Dashboard</div>
+    </div>
+    
+    <div class="form-container">
+      <div class="form-title">Admin Sign In</div>
+    <form id="admin-login-form">
+        <div class="input-container">
+          <input 
+            type="email" 
+            id="admin-login-email" 
+            class="form-input"
+            placeholder="Admin Email (@itskysolutions.com)" 
+            required 
+          />
+        </div>
+        <div class="input-container">
+          <input 
+            type="password" 
+            id="admin-login-password" 
+            class="form-input"
+            placeholder="Password" 
+            required 
+          />
+        </div>
+        <button type="submit" class="submit-button" id="submit-btn">
+          <span id="button-text">Sign In</span>
+        </button>
+        <div id="admin-login-error" class="error-message"></div>
+    </form>
+    </div>
+    
+    <div class="back-link">
+      <a href="signin.html">← Back to User Sign In</a>
+    </div>
+  </div>
+  <script src="admin-signin.js"></script>
+</body>
+</html> 
