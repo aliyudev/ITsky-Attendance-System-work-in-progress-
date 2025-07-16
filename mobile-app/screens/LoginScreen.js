@@ -1,4 +1,18 @@
+// LoginScreen.js - User Login Screen
+// This screen allows users to log in to the attendance system using Supabase Auth.
+//
+// Features:
+// - Email/password login via Supabase Auth
+// - Admin detection and redirection
+// - Password recovery link
+// - Uses AsyncStorage for session persistence
+//
+// @author ITSky Solutions
+// @version 1.3.0
+
+// Import React and useState for state management
 import React, { useState } from 'react';
+// Import React Native components for UI
 import {
   View,
   Text,
@@ -11,23 +25,29 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
+// Import AsyncStorage for local storage
 import AsyncStorage from '@react-native-async-storage/async-storage';
+// Import Supabase client for API calls
 import { supabase } from '../config/api';
 
+// Main LoginScreen component
 export default function LoginScreen({ navigation }) {
+  // State variables for form fields and loading state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Function to handle user login logic
   const handleLogin = async () => {
+    // Validate both fields are filled
     if (!email || !password) {
       Alert.alert('Error', 'Please enter both email and password');
       return;
     }
 
     setIsLoading(true);
-
     try {
+      // Attempt to sign in with Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -35,23 +55,20 @@ export default function LoginScreen({ navigation }) {
       if (error) throw error;
       const user = data.user;
       if (user) {
+        // Store user session in AsyncStorage
         await AsyncStorage.setItem('userId', user.id);
         await AsyncStorage.setItem('userEmail', user.email);
-        // Optionally fetch user profile to check is_admin
-        const { data: profile, error: profileError } = await supabase
-          .from('users')
-          .select('is_admin')
-          .eq('id', user.id)
-          .single();
-        if (profileError) throw profileError;
-        await AsyncStorage.setItem('isAdmin', (profile.is_admin ? 'true' : 'false'));
-        if (profile.is_admin) {
+        // Check if user is admin and redirect accordingly
+        if (user.email === 'admin@itskysolutions.com') {
+          await AsyncStorage.setItem('isAdmin', 'true');
           navigation.replace('AdminDashboard');
         } else {
+          await AsyncStorage.setItem('isAdmin', 'false');
           navigation.replace('Dashboard');
         }
       }
     } catch (error) {
+      // Handle login errors
       console.error('Login error:', error);
       Alert.alert(
         'Login Failed',
@@ -62,6 +79,7 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
+  // Render the login form UI
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -128,12 +146,13 @@ export default function LoginScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
 
+          {/* Replace Admin Login link with Forgot Password */}
           <TouchableOpacity
             style={styles.linkButton}
-            onPress={() => navigation.navigate('AdminLogin')}
+            onPress={() => navigation.navigate('PasswordRecovery')}
           >
             <Text style={styles.linkText}>
-              Admin Login
+              Forgot password? Reset
             </Text>
           </TouchableOpacity>
         </View>
@@ -142,6 +161,7 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
+// Styles for the login screen
 const styles = StyleSheet.create({
   container: {
     flex: 1,

@@ -1,4 +1,20 @@
+// AdminDashboardScreen.js - Admin Dashboard
+// This screen provides admin users with a dashboard to view, search, and manage user attendance records.
+// Uses Supabase for all data operations.
+//
+// Features:
+// - View all users and their attendance statistics
+// - Search users by name or email
+// - Export attendance data (planned)
+// - Delete users (via ManageUsersScreen)
+// - Uses Supabase client for all data operations
+//
+// @author ITSky Solutions
+// @version 1.3.0
+
+// Import React and hooks for state and lifecycle management
 import React, { useState, useEffect } from 'react';
+// Import React Native components for UI
 import {
   View,
   Text,
@@ -9,22 +25,33 @@ import {
   RefreshControl,
   ActivityIndicator,
   Image,
+  TextInput, // <-- Add TextInput import
 } from 'react-native';
+// Import AsyncStorage for local storage
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// Removed: import axios from 'axios';
+import { supabase } from '../config/api'; // <-- Use Supabase client
+import { Picker } from '@react-native-picker/picker'; // <-- Add picker import
+import * as FileSystem from 'expo-file-system'; // <-- Add file system import
+import * as Sharing from 'expo-sharing';
 // Removed: import { getApiUrl } from '../config/api';
 
+// Main AdminDashboardScreen component
 export default function AdminDashboardScreen({ navigation }) {
+  // State variables for admin email, loading, refreshing, and stats
   const [adminEmail, setAdminEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState(null);
+  const [searchQuery, setSearchQuery] = useState(''); // <-- Add search state
+  const [selectedUserEmail, setSelectedUserEmail] = useState('ALL'); // 'ALL' means export all users
 
+  // useEffect to load admin data and stats on mount
   useEffect(() => {
     loadAdminData();
     loadStats();
   }, []);
 
+  // Function to load admin email from storage
   const loadAdminData = async () => {
     try {
       const email = await AsyncStorage.getItem('userEmail');
@@ -34,18 +61,60 @@ export default function AdminDashboardScreen({ navigation }) {
     }
   };
 
+  // Function to load attendance statistics (direct Supabase fetch)
   const loadStats = async () => {
     setIsLoading(true);
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      // Supabase client or direct fetch for stats
-      // For now, a placeholder for future implementation
-      // Example: const response = await axios.get(getApiUrl('/admin/stats'), { headers: { Authorization: token } });
-      // setStats(response.data);
-      setStats({
-        stats: [], // Removed example users
-        daysThisMonth: 22, // Placeholder for current month days
+      // Check admin status
+      const isAdmin = await AsyncStorage.getItem('isAdmin');
+      if (isAdmin !== 'true') {
+        Alert.alert('Access Denied', 'You are not an admin.');
+        navigation.replace('Login');
+        return;
+      }
+
+      // Get all users
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, name, email');
+      if (usersError) throw usersError;
+
+      // Get all attendance records for this month
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+      const monthStart = `${year}-${month}-01`;
+      const monthEnd = `${year}-${month}-31`;
+      const { data: attendance, error: attError } = await supabase
+        .from('attendance')
+        .select('user_id, clock_in_time')
+        .gte('clock_in_time', monthStart)
+        .lte('clock_in_time', monthEnd);
+      if (attError) throw attError;
+
+      // Calculate working days (Mon-Thu)
+      const daysInMonth = new Date(year, parseInt(month), 0).getDate();
+      let workingDays = 0;
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, parseInt(month) - 1, day);
+        const dayOfWeek = date.getDay();
+        if (dayOfWeek >= 1 && dayOfWeek <= 4) workingDays++;
+      }
+
+      // Aggregate stats per user
+      const stats = users.map(user => {
+        const userRecords = (attendance || [])
+          .filter(r => r.user_id === user.id)
+          .map(r => r.clock_in_time);
+        return {
+          fullname: user.name,
+          email: user.email,
+          daysPresent: userRecords.length,
+          records: userRecords,
+        };
       });
+
+      setStats({ stats, daysThisMonth: workingDays });
     } catch (error) {
       console.error('Error loading stats:', error);
       Alert.alert('Error', 'Failed to load attendance statistics');
@@ -54,12 +123,14 @@ export default function AdminDashboardScreen({ navigation }) {
     }
   };
 
+  // Function to handle pull-to-refresh
   const onRefresh = async () => {
     setRefreshing(true);
     await loadStats();
     setRefreshing(false);
   };
 
+  // Function to handle logout logic
   const handleLogout = async () => {
     Alert.alert(
       'Logout',
@@ -78,10 +149,29 @@ export default function AdminDashboardScreen({ navigation }) {
     );
   };
 
+  // Function to render user attendance statistics (with search filter)
   const renderUserStats = () => {
     if (!stats || !stats.stats) return null;
 
-    return stats.stats.map((user, index) => (
+    // Filter users by search query (name or email, case-insensitive)
+    const filteredUsers = stats.stats.filter(user => {
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        (user.fullname && user.fullname.toLowerCase().includes(q)) ||
+        (user.email && user.email.toLowerCase().includes(q))
+      );
+    });
+
+    if (filteredUsers.length === 0) {
+      return (
+        <View style={styles.noResultsContainer}>
+          <Text style={styles.noResultsText}>No users found.</Text>
+        </View>
+      );
+    }
+
+    return filteredUsers.map((user, index) => (
       <View key={index} style={styles.userCard}>
         <View style={styles.userHeader}>
           <Text style={styles.userName}>{user.fullname || 'Unknown User'}</Text>
@@ -122,6 +212,41 @@ export default function AdminDashboardScreen({ navigation }) {
     ));
   };
 
+  // Update handleExportReports to export all details
+  const handleExportReports = async () => {
+    if (!stats || !stats.stats) {
+      Alert.alert('Error', 'No data to export.');
+      return;
+    }
+    let rows = [['Name', 'Email', 'Attendance Date', 'Attendance Time']];
+    let usersToExport = stats.stats;
+    if (selectedUserEmail !== 'ALL') {
+      usersToExport = usersToExport.filter(u => u.email === selectedUserEmail);
+    }
+    usersToExport.forEach(user => {
+      if (user.records.length === 0) {
+        rows.push([user.fullname, user.email, '', '']);
+      } else {
+        user.records.forEach(record => {
+          const dateObj = new Date(record);
+          const date = dateObj.toLocaleDateString();
+          const time = dateObj.toLocaleTimeString();
+          rows.push([user.fullname, user.email, date, time]);
+        });
+      }
+    });
+    // Convert to CSV string
+    const csv = rows.map(r => r.map(f => '"' + (f || '') + '"').join(',')).join('\n');
+    try {
+      const fileUri = FileSystem.documentDirectory + `attendance_report_${Date.now()}.csv`;
+      await FileSystem.writeAsStringAsync(fileUri, csv, { encoding: FileSystem.EncodingType.UTF8 });
+      await Sharing.shareAsync(fileUri);
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Failed to export CSV');
+    }
+  };
+
+  // Render the admin dashboard UI
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -155,6 +280,16 @@ export default function AdminDashboardScreen({ navigation }) {
           <Text style={styles.statsSubtitle}>
             Current Month: {stats?.daysThisMonth || 0} working days
           </Text>
+          {/* Search Bar */}
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by name or email..."
+            placeholderTextColor="#888"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
         </View>
 
         {isLoading ? (
@@ -166,19 +301,36 @@ export default function AdminDashboardScreen({ navigation }) {
           renderUserStats()
         )}
 
+        {/* User Picker for Export */}
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 4 }}>Export Attendance For:</Text>
+          <View style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#e5e5e5' }}>
+            <Picker
+              selectedValue={selectedUserEmail}
+              onValueChange={setSelectedUserEmail}
+              style={{ height: 52 }}
+            >
+              <Picker.Item label="All Users" value="ALL" />
+              {stats?.stats?.map((user, idx) => (
+                <Picker.Item key={user.email || idx} label={user.fullname + ' (' + user.email + ')'} value={user.email} />
+              ))}
+            </Picker>
+          </View>
+        </View>
+
         <View style={styles.actionsContainer}>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => Alert.alert('Info', 'User management features coming soon!')}
+            onPress={() => navigation.navigate('ManageUsers')}
           >
             <Text style={styles.actionButtonText}>Manage Users</Text>
           </TouchableOpacity>
           
           <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => Alert.alert('Info', 'Export features coming soon!')}
+            style={styles.exportButton}
+            onPress={handleExportReports}
           >
-            <Text style={styles.actionButtonText}>Export Reports</Text>
+            <Text style={styles.exportButtonText}>Export Reports (CSV)</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -186,6 +338,7 @@ export default function AdminDashboardScreen({ navigation }) {
   );
 }
 
+// Styles for the admin dashboard screen
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -346,6 +499,50 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     color: '#222', // Changed from red to dark
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  searchInput: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 16,
+    marginTop: 8,
+    marginBottom: 8,
+    color: '#222',
+  },
+  noResultsContainer: {
+    alignItems: 'center',
+    padding: 32,
+  },
+  noResultsText: {
+    fontSize: 16,
+    color: '#888',
+  },
+  manageUsersButton: {
+    backgroundColor: '#4CAF50', // A different color for manage users
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  manageUsersButtonText: {
+    color: '#fff', // White text
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  exportButton: {
+    backgroundColor: '#2196F3',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  exportButtonText: {
+    color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
   },

@@ -1,22 +1,21 @@
-/**
- * DashboardScreen.js - Main User Dashboard
- * 
- * This is the primary screen for authenticated users in the ITSky Attendance mobile app.
- * It provides a comprehensive interface for clocking in, viewing attendance statistics,
- * and managing user sessions.
- * 
- * Features:
- * - GPS-based clock-in with location verification
- * - Real-time attendance calendar display
- * - User authentication status management
- * - Admin role detection and redirection
- * - Offline data persistence with AsyncStorage
- * 
- * @author ITSky Solutions
- * @version 1.3.0
- */
+// DashboardScreen.js - Main User Dashboard
+// This is the primary screen for authenticated users in the ITSky Attendance mobile app.
+// It provides a comprehensive interface for clocking in, viewing attendance statistics,
+// and managing user sessions. Uses Supabase for all attendance and user data.
+//
+// Features:
+// - GPS-based clock-in with location verification
+// - Real-time attendance calendar display
+// - User authentication status management
+// - Admin role detection and redirection
+// - Offline data persistence with AsyncStorage
+//
+// @author ITSky Solutions
+// @version 1.3.0
 
+// Import React and hooks for state and lifecycle management
 import React, { useState, useEffect } from 'react';
+// Import React Native components for UI
 import {
   View,
   Text,
@@ -27,22 +26,22 @@ import {
   Image,
   SafeAreaView,
 } from 'react-native';
+// Import AsyncStorage for local storage
 import AsyncStorage from '@react-native-async-storage/async-storage';
+// Import Expo Location for GPS
 import * as Location from 'expo-location';
+// Import Supabase client for API calls
 import { supabase } from '../config/api';
 
-/**
- * DashboardScreen Component
- * 
- * Main dashboard interface for authenticated users. Handles:
- * - User authentication status
- * - GPS location verification
- * - Attendance tracking
- * - Calendar display
- * - Session management
- * 
- * @param {Object} navigation - React Navigation object for screen transitions
- */
+// DashboardScreen Component
+// Main dashboard interface for authenticated users. Handles:
+// - User authentication status
+// - GPS location verification
+// - Attendance tracking
+// - Calendar display
+// - Session management
+//
+// @param {Object} navigation - React Navigation object for screen transitions
 export default function DashboardScreen({ navigation }) {
   // State management for user interface and data
   const [userEmail, setUserEmail] = useState(''); // Current user's email
@@ -54,20 +53,16 @@ export default function DashboardScreen({ navigation }) {
   const [alreadyClockedIn, setAlreadyClockedIn] = useState(false); // Prevents duplicate clock-ins
   const [selectedDayInfo, setSelectedDayInfo] = useState(null); // Info for clicked day
 
-  /**
-   * Component initialization effect
-   * Runs on component mount to set up user data and check authentication
-   */
+  // Component initialization effect
+  // Runs on component mount to set up user data and check authentication
   useEffect(() => {
     checkUserType();
     loadUserData();
     loadCalendar();
   }, []);
 
-  /**
-   * Check if current user is an admin and redirect if necessary
-   * Admins should be redirected to the admin dashboard
-   */
+  // Check if current user is an admin and redirect if necessary
+  // Admins should be redirected to the admin dashboard
   const checkUserType = async () => {
     try {
       const isAdmin = await AsyncStorage.getItem('isAdmin');
@@ -79,10 +74,8 @@ export default function DashboardScreen({ navigation }) {
     }
   };
 
-  /**
-   * Load user email from local storage
-   * Displays the current user's email in the welcome message
-   */
+  // Load user email from local storage
+  // Displays the current user's email in the welcome message
   const loadUserData = async () => {
     try {
       const email = await AsyncStorage.getItem('userEmail');
@@ -92,10 +85,8 @@ export default function DashboardScreen({ navigation }) {
     }
   };
 
-  /**
-   * Load user's attendance statistics and calendar data
-   * Fetches data from the server and updates the UI
-   */
+  // Load user's attendance statistics and calendar data
+  // Fetches data from Supabase and updates the UI
   const loadCalendar = async () => {
     try {
       const userId = await AsyncStorage.getItem('userId');
@@ -132,7 +123,7 @@ export default function DashboardScreen({ navigation }) {
       const todayRecord = attendanceRecords.find(record => record.date === today);
       setAlreadyClockedIn(!!todayRecord);
       if (todayRecord) {
-        setClockInMessage(`✅ Already clocked in today at ${todayRecord.time}`);
+        setClockInMessage(`\u2705 Already clocked in today at ${todayRecord.time}`);
         setStatusIndicator('#4CAF50');
       }
     } catch (error) {
@@ -140,12 +131,9 @@ export default function DashboardScreen({ navigation }) {
     }
   };
 
-  /**
-   * Request location permissions from the user
-   * Required for GPS-based attendance verification
-   * 
-   * @returns {Promise<boolean>} True if permission granted, false otherwise
-   */
+  // Request location permissions from the user
+  // Required for GPS-based attendance verification
+  // @returns {Promise<boolean>} True if permission granted, false otherwise
   const requestLocationPermission = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
@@ -159,12 +147,9 @@ export default function DashboardScreen({ navigation }) {
     return true;
   };
 
-  /**
-   * Get current GPS location with high accuracy
-   * Used for office proximity verification
-   * 
-   * @returns {Promise<Object|null>} Location object or null if failed
-   */
+  // Get current GPS location with high accuracy
+  // Used for office proximity verification
+  // @returns {Promise<Object|null>} Location object or null if failed
   const getGPSLocation = async () => {
     try {
       const location = await Location.getCurrentPositionAsync({
@@ -178,15 +163,13 @@ export default function DashboardScreen({ navigation }) {
     }
   };
 
-  /**
-   * Main clock-in function with comprehensive error handling
-   * Handles the entire clock-in process including:
-   * - Permission requests
-   * - GPS location acquisition
-   * - Server verification
-   * - Attendance recording
-   * - UI updates
-   */
+  // Main clock-in function with comprehensive error handling
+  // Handles the entire clock-in process including:
+  // - Permission requests
+  // - GPS location acquisition
+  // - Supabase verification
+  // - Attendance recording
+  // - UI updates
   const handleClockIn = async () => {
     if (alreadyClockedIn) {
       Alert.alert(
@@ -223,12 +206,12 @@ export default function DashboardScreen({ navigation }) {
           accuracy: coords.accuracy
         }]);
       if (error) throw error;
-      setClockInMessage('✅ Clock-in successful!');
+      setClockInMessage('\u2705 Clock-in successful!');
       setStatusIndicator('#4CAF50');
       setAlreadyClockedIn(true);
       loadCalendar();
     } catch (error) {
-      setClockInMessage('❌ Clock-in failed.');
+      setClockInMessage('\u274c Clock-in failed.');
       setStatusIndicator('#dc2626');
       Alert.alert('Clock-in Failed', error.message || 'Unable to clock in.');
     } finally {
@@ -236,10 +219,8 @@ export default function DashboardScreen({ navigation }) {
     }
   };
 
-  /**
-   * Handle user logout with confirmation
-   * Clears all stored authentication data and redirects to login
-   */
+  // Handle user logout with confirmation
+  // Clears all stored authentication data and redirects to login
   const handleLogout = async () => {
     Alert.alert(
       'Logout',
@@ -258,12 +239,9 @@ export default function DashboardScreen({ navigation }) {
     );
   };
 
-  /**
-   * Render the attendance calendar for the current month
-   * Creates a visual calendar showing present, absent, and non-working days
-   * 
-   * @returns {JSX.Element|null} Calendar component or null if no data
-   */
+  // Render the attendance calendar for the current month
+  // Creates a visual calendar showing present, absent, and non-working days
+  // @returns {JSX.Element|null} Calendar component or null if no data
   const renderCalendar = () => {
     if (!attendanceStats) return null;
 
@@ -396,10 +374,8 @@ export default function DashboardScreen({ navigation }) {
     );
   };
 
-  /**
-   * Main render function
-   * Returns the complete dashboard interface
-   */
+  // Main render function
+  // Returns the complete dashboard interface
   return (
     <SafeAreaView style={styles.container}>
       {/* Header section with logo, welcome message, and logout button */}
@@ -459,10 +435,8 @@ export default function DashboardScreen({ navigation }) {
   );
 }
 
-/**
- * Component styles
- * Defines the visual appearance of all dashboard elements
- */
+// Component styles
+// Defines the visual appearance of all dashboard elements
 const styles = StyleSheet.create({
   // Main container with safe area support
   container: {

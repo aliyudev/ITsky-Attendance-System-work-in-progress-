@@ -8,19 +8,15 @@ cd mobile-app
 npm install
 ```
 
-### 2. Configure API URL
-Edit `config/api.js` and update the IP address:
+### 2. Configure Supabase
+Edit `config/api.js` and update with your Supabase project credentials:
 
-**For Development (Expo Go):**
 ```javascript
-// Change this to your computer's IP address
-return 'http://YOUR_IP_ADDRESS:3000/api';
-```
-
-**For Production:**
-```javascript
-// Replace with your actual server URL
-return 'https://your-production-server.com/api';
+// Replace with your Supabase project URL and anon key
+export const supabase = createClient(
+  'https://YOUR_SUPABASE_URL.supabase.co',
+  'YOUR_SUPABASE_ANON_KEY'
+);
 ```
 
 ### 3. Start Development Server
@@ -33,7 +29,7 @@ npx expo start
 - Scan the QR code from terminal
 - Or press `a` for Android or `i` for iOS
 
-## 📱 Building for Production
+## 📦 Building for Production
 
 ### Android APK
 ```bash
@@ -61,28 +57,22 @@ eas build --platform android
 eas build --platform ios
 ```
 
-## 🔧 Configuration
+## ⚙️ Configuration
 
-### API Endpoints
-All API calls are centralized in `config/api.js`:
+### Supabase Endpoints
+All API calls are made via the Supabase client:
 
-- `/register` - User registration
-- `/login` - User authentication  
-- `/clockin` - Clock in with GPS
-- `/stats` - User attendance stats
-- `/admin/stats` - Admin dashboard stats
-- `/verify-location` - GPS location verification
+- **Auth**: Supabase Auth API
+- **Attendance**: Supabase table `attendance`
+- **Users**: Supabase table `users`
 
 ### Environment Variables
-The app automatically detects development vs production:
+No environment variables are required for the mobile app. All configuration is in `config/api.js`.
 
-- **Development**: Uses local IP address
-- **Production**: Uses production server URL
-
-## 📋 Features
+## 📝 Features
 
 ### ✅ Implemented
-- User registration and login
+- User registration and login (Supabase Auth)
 - GPS location verification
 - Clock in/out functionality
 - Attendance dashboard
@@ -90,7 +80,7 @@ The app automatically detects development vs production:
 - Offline data caching
 - Real-time updates
 
-### 🔄 Planned
+### 🔜 Planned
 - Push notifications
 - Biometric authentication
 - QR code attendance
@@ -98,14 +88,14 @@ The app automatically detects development vs production:
 - Team management
 - Reports and analytics
 
-## 🐛 Troubleshooting
+## 🐞 Troubleshooting
 
 ### Common Issues
 
-**1. "Network Error"**
-- Check if server is running on port 3000
-- Verify IP address in `config/api.js`
-- Ensure phone and computer are on same network
+**1. "Supabase Connection Error"**
+- Check your Supabase URL and anon key in `config/api.js`
+- Ensure your Supabase project is running and tables are set up
+- Make sure your device has internet access
 
 **2. "Location Permission Required"**
 - Allow location access in phone settings
@@ -113,7 +103,7 @@ The app automatically detects development vs production:
 - Grant permission when prompted
 
 **3. "Access Denied: Location"**
-- Ensure you're within 10km of office
+- Ensure you're within the allowed distance of the office
 - Check GPS accuracy
 - Try refreshing location
 
@@ -128,9 +118,9 @@ npx expo start --dev-client
 For issues:
 1. Check this setup guide
 2. Review error messages in console
-3. Verify API configuration
+3. Verify Supabase configuration
 4. Test with Expo Go first
 
 ---
 
-**Note**: Make sure your server is running before testing the mobile app! 
+**Note**: Make sure your Supabase project is set up and configured before testing the mobile app! 

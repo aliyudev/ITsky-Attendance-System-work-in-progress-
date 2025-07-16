@@ -1,5 +1,7 @@
+// Import registerRootComponent from Expo to register the main app component
 import { registerRootComponent } from 'expo';
 
+// Import the main App component
 import App from './App';
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);

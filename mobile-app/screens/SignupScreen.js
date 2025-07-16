@@ -1,4 +1,18 @@
+// SignupScreen.js - User Registration Screen
+// This screen allows new users to register for the attendance system using Supabase Auth.
+//
+// Features:
+// - Email/password registration via Supabase Auth
+// - Enforces @itskysolutions.com email domain
+// - Password strength validation
+// - Stores user profile in Supabase users table
+//
+// @author ITSky Solutions
+// @version 1.3.0
+
+// Import React and useState for state management
 import React, { useState } from 'react';
+// Import React Native components for UI
 import {
   View,
   Text,
@@ -11,34 +25,57 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
+// Import Supabase client for API calls
 import { supabase } from '../config/api';
 
+// Main SignupScreen component
 export default function SignupScreen({ navigation }) {
+  // State variables for form fields and loading state
   const [fullname, setFullname] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Function to handle signup logic
   const handleSignup = async () => {
+    // Validate all fields are filled
     if (!fullname || !email || !password || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
+    // Check if passwords match
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match');
       return;
     }
 
+    // Ensure email is from the correct domain
     if (!email.endsWith('@itskysolutions.com')) {
       Alert.alert('Error', 'Email must be @itskysolutions.com');
       return;
     }
 
+    // Password strength validation
+    if (password.length < 8) {
+      Alert.alert('Error', 'Password must be at least 8 characters');
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      Alert.alert('Error', 'Password must include at least one uppercase letter');
+      return;
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      Alert.alert('Error', 'Password must include at least one special symbol');
+      return;
+    }
+
+    // Set loading state
     setIsLoading(true);
 
     try {
+      // Attempt to sign up user with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -53,6 +90,7 @@ export default function SignupScreen({ navigation }) {
           .insert([{ id: user.id, name: fullname, email }]);
         if (profileError) throw profileError;
       }
+      // Show success alert and navigate to login
       Alert.alert(
         'Success',
         'Account created successfully! Please sign in.',
@@ -64,16 +102,19 @@ export default function SignupScreen({ navigation }) {
         ]
       );
     } catch (error) {
+      // Handle signup errors
       console.error('Signup error:', error);
       Alert.alert(
         'Signup Failed',
         error.message || 'Registration failed. Please try again.'
       );
     } finally {
+      // Reset loading state
       setIsLoading(false);
     }
   };
 
+  // Render the signup form UI
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -94,7 +135,7 @@ export default function SignupScreen({ navigation }) {
           
           <View style={styles.inputContainer}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: '#222' }]}
               placeholder="Enter your full name"
               placeholderTextColor="#888"
               value={fullname}
@@ -105,7 +146,7 @@ export default function SignupScreen({ navigation }) {
 
           <View style={styles.inputContainer}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: '#222' }]}
               placeholder="Enter your email (@itskysolutions.com)"
               placeholderTextColor="#888"
               value={email}
@@ -118,7 +159,7 @@ export default function SignupScreen({ navigation }) {
 
           <View style={styles.inputContainer}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: '#222' }]}
               placeholder="Enter your password"
               placeholderTextColor="#888"
               value={password}
@@ -130,7 +171,7 @@ export default function SignupScreen({ navigation }) {
 
           <View style={styles.inputContainer}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: '#222' }]}
               placeholder="Confirm your password"
               placeholderTextColor="#888"
               value={confirmPassword}
@@ -164,6 +205,7 @@ export default function SignupScreen({ navigation }) {
   );
 }
 
+// Styles for the signup screen
 const styles = StyleSheet.create({
   container: {
     flex: 1,

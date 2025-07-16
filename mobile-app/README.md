@@ -1,34 +1,34 @@
 # ITSky Attendance Mobile App
 
-A React Native mobile application for the ITSky Attendance System, synchronized with the web version.
+A React Native mobile application for the ITSky Attendance System, now powered by Supabase for authentication, database, and API.
 
 ## 🎨 Design Sync
 
-The mobile app has been synchronized with the web version to ensure consistent:
+The mobile app is designed to match the web version's look and feel:
 
-- **Color Scheme**: Red (#dc2626) primary color matching web version
+- **Color Scheme**: Red (#dc2626) primary color
 - **Typography**: Consistent font weights and sizes
-- **Layout**: Similar card-based design with shadows
+- **Layout**: Card-based design with shadows
 - **UI Components**: Matching button styles, input fields, and status indicators
 
-## 🔧 Database Sync
+## 🛠️ Backend & Database
 
-The mobile app uses the same database and API endpoints as the web version:
-
-- **SQLite Database**: Shared `attendance.db` file
-- **API Endpoints**: Same REST API (`/api/login`, `/api/clockin`, `/api/stats`, etc.)
-- **Authentication**: Token-based auth with AsyncStorage
-- **Location Verification**: GPS-based location checking with same office coordinates
+- **Supabase**: All authentication, user, and attendance data is managed by Supabase (PostgreSQL)
+- **Supabase Auth**: Handles user sign up, login, and password recovery
+- **Realtime API**: Attendance and user data is fetched and updated via Supabase client
 
 ## 📱 Features
 
 ### ✅ Implemented
-- **Authentication**: Login with email/password
+- **Authentication**: Login/signup with email/password (Supabase Auth)
 - **Location Verification**: GPS-based office proximity check
-- **Clock In**: Location-verified attendance recording
+- **Clock In**: Location-verified attendance recording (Supabase)
 - **Attendance Calendar**: Monthly view with present days highlighted
 - **Stats Display**: Days present vs total days in month
 - **Logout**: Secure session termination
+- **Admin Dashboard**: Admins can view/search users and attendance
+- **User Management**: Admins can delete users
+- **Password Recovery**: Email-based password reset
 
 ### 🎯 Key Features
 - **GPS Location**: Real-time location verification
@@ -41,7 +41,16 @@ The mobile app uses the same database and API endpoints as the web version:
 ### Prerequisites
 - Node.js (v16 or higher)
 - Expo CLI (`npm install -g @expo/cli`)
+- Supabase project (see below)
 - Mobile device or emulator
+
+### Supabase Setup
+1. [Create a Supabase project](https://app.supabase.com/)
+2. Set up tables: `users`, `attendance`
+3. Enable Supabase Auth (email/password)
+4. Configure Row Level Security (RLS) as needed
+5. Get your Supabase URL and anon/public key
+6. Update `config/api.js` with your Supabase credentials
 
 ### Installation
 ```bash
@@ -52,7 +61,7 @@ npm install
 ### Running the App
 ```bash
 # Start Expo development server
-npm start
+npx expo start
 
 # Run on Android
 npm run android
@@ -66,19 +75,18 @@ npm run web
 
 ## 🔗 API Configuration
 
-The app connects to the web server at `http://localhost:3000/api`. Make sure:
+The app connects to Supabase for all authentication and data operations. Make sure:
 
-1. The web server is running (`node server.js`)
-2. Update `API_BASE_URL` in screens if using different server
-3. For physical device testing, use your computer's IP address instead of localhost
+1. You have a Supabase project set up
+2. `config/api.js` contains your Supabase URL and anon key
+3. For physical device testing, use your computer's IP address for any custom endpoints (if needed)
 
-## 📊 Database Schema
+## 🗄️ Database Schema
 
-Same as web version:
-- **users**: id, email, password, fullname, is_admin
-- **attendance**: id, user_id, date
+- **users**: id, email, name, is_admin
+- **attendance**: id, user_id, clock_in_time
 
-## 🎨 UI Components
+## 🧩 UI Components
 
 ### LoginScreen
 - Clean login form with red accent color
@@ -96,18 +104,24 @@ Same as web version:
 - App initialization and auth check
 - Consistent branding with web version
 
+### AdminDashboardScreen
+- Admin-only dashboard for viewing/searching users and attendance
+- User management (delete users)
+- Export (planned)
+
 ## 🔒 Security Features
 
+- **Supabase Auth**: Secure session management
 - **Location Verification**: GPS-based office proximity check
-- **Token Authentication**: Secure session management
 - **Input Validation**: Client and server-side validation
 - **Error Handling**: Graceful error display
+- **Domain Validation**: Only @itskysolutions.com emails can be admins
 
-## 🐛 Debugging
+## 🐞 Debugging
 
 ### Common Issues
 1. **Location Permission**: Ensure GPS is enabled and permission granted
-2. **Network Connection**: Check API server is running
+2. **Supabase Connection**: Check Supabase URL and anon key
 3. **Expo Development**: Use Expo Go app for testing
 
 ### Debug Tools
@@ -124,11 +138,11 @@ Same as web version:
 ## 🔄 Sync Status
 
 ✅ **Design**: Fully synchronized with web version
-✅ **Database**: Shared SQLite database
-✅ **API**: Same endpoints and authentication
+✅ **Database**: Supabase PostgreSQL
+✅ **API**: All endpoints via Supabase
 ✅ **Features**: All core functionality implemented
 ✅ **Styling**: Consistent color scheme and layout
 
 ## 📞 Support
 
-For issues or questions about the mobile app sync, refer to the main project documentation or contact the development team. 
+For issues or questions about the mobile app or Supabase sync, refer to the main project documentation or contact the development team. 
