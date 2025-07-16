@@ -1,159 +1,168 @@
-# ITSky Attendance Web App
+# ITSky Employee Attendance System
 
-A modern web application for employee attendance management at ITSky Solutions.
+A comprehensive employee attendance management system with GPS verification, featuring a React Native mobile app and a Supabase backend.
 
----
+## 🚀 Features
 
-## Features
-- **User Registration:** Staff can sign up with full name, company email, and password (with confirmation).
-- **User Login:** Staff can log in with their company email and password.
-- **Clock In:** Staff can clock in once per day.
-- **Personal Dashboard:** Staff see their attendance calendar for the current month.
-- **Admin Login:** Admins have a dedicated login page.
-- **Admin Dashboard:** Admins can view all users, search by name/email, and see each user's attendance calendar.
-- **Branding:** Custom logo and company name on all pages.
+### Mobile App (React Native)
+- **User Authentication**: Secure login/signup with email validation
+- **GPS Clock-in**: Location-based attendance verification
+- **Attendance Calendar**: Visual monthly attendance tracking
+- **Real-time Status**: Live feedback during clock-in process
+- **Offline Support**: AsyncStorage for data persistence
+- **Admin Dashboard**: Admins can view and manage user attendance
+- **User Management**: Admins can delete users
+- **Password Recovery**: Email-based password reset
+- **Search Functionality**: Filter employees by name or email (admin)
 
----
+### Backend (Supabase)
+- **PostgreSQL Database**: Managed by Supabase
+- **Supabase Auth**: Secure authentication and session management
+- **Row Level Security**: Fine-grained access control
+- **Realtime API**: Live updates for attendance data
 
-## Project Structure & File Explanations
+## 📁 Project Structure
 
 ```
 Test/
-  ├── public/
-  │   ├── index.html           # User dashboard page
-  │   ├── signup.html          # User registration page
-  │   ├── signin.html          # User login page
-  │   ├── admin.html           # Admin dashboard page
-  │   ├── admin-signin.html    # Admin login page
-  │   ├── app.js               # JS for user dashboard
-  │   ├── signup.js            # JS for user registration
-  │   ├── signin.js            # JS for user login
-  │   ├── admin.js             # JS for admin dashboard
-  │   ├── admin-signin.js      # JS for admin login
-  │   ├── style.css            # Shared CSS for all pages
-  │   ├── itskylogo.png        # Company logo
-  ├── server.js                # Node.js/Express backend server
-  ├── attendance.db            # SQLite database (auto-created)
-  ├── package.json             # Node.js dependencies and scripts
-  └── README.md                # Project documentation
+├── mobile-app/                # React Native mobile application
+│   ├── assets/                # Images and static files
+│   ├── config/                # Supabase configuration
+│   ├── screens/               # App screens/components
+│   ├── App.js                 # Main app component
+│   ├── app.json               # Expo configuration
+│   ├── README.md              # Mobile app documentation
+│   └── SETUP.md               # Mobile app setup guide
+├── LICENSE                    # MIT License
+├── README.md                  # This documentation
+└── mcp.json                   # Supabase MCP config
 ```
 
-### File Details
-- **public/index.html**: User dashboard. Shows clock-in button and attendance calendar.
-- **public/signup.html**: Registration form for employees. Requires full name, company email, password, and confirm password.
-- **public/signin.html**: Login form for employees.
-- **public/admin.html**: Admin dashboard. Shows all users, search, and attendance stats.
-- **public/admin-signin.html**: Login form for admins only.
-- **public/app.js**: Handles user dashboard logic (fetching stats, clock-in, logout).
-- **public/signup.js**: Handles registration logic and validation.
-- **public/signin.js**: Handles user login logic and prevents admin login here.
-- **public/admin.js**: Handles admin dashboard logic, including search and rendering calendars.
-- **public/admin-signin.js**: Handles admin login logic and redirects to admin dashboard.
-- **public/style.css**: Styles for all pages.
-- **public/itskylogo.png**: Company logo displayed on all pages.
-- **server.js**: Main backend server. Handles API endpoints, authentication, attendance, and admin logic.
-- **attendance.db**: SQLite database file (auto-created, do not edit manually).
-- **package.json**: Lists dependencies and scripts for Node.js.
-- **README.md**: This documentation file.
+## 🛠️ Technology Stack
 
----
+### Frontend
+- **React Native**: Cross-platform mobile development
+- **Expo**: Development platform and tools
+- **AsyncStorage**: Local data persistence
+- **Supabase JS**: API client for Supabase
 
-## server.js Code Structure & Comments
+### Backend
+- **Supabase**: Managed PostgreSQL, Auth, and Realtime API
 
-The `server.js` file is organized as follows (with comments in the code for each section):
+### Development Tools
+- **Expo CLI**: Development and build tools
+- **npm**: Package management
+- **Git**: Version control
 
-1. **Imports and Setup**
-   - Loads required modules (express, sqlite3, etc.)
-   - Sets up Express app and SQLite database
+## 📱 Mobile App Features
 
-2. **Database Initialization**
-   - Creates `users` and `attendance` tables if they don't exist
-   - Ensures a default admin user exists
+### Authentication Flow
+1. **Loading Screen**: Checks authentication status
+2. **Login/Signup**: User credential management
+3. **Dashboard**: Main attendance interface
+4. **Admin Dashboard**: Administrative functions
 
-3. **Session Management**
-   - Uses a simple in-memory session object for demo purposes
+### Clock-in Process
+1. **Location Permission**: Request GPS access
+2. **GPS Verification**: Check proximity to office
+3. **Server Validation**: Verify location with Supabase
+4. **Attendance Recording**: Store clock-in data
+5. **Status Update**: Display success/error messages
 
-4. **API Endpoints**
-   - `/api/register` (POST): Register a new user (employee)
-   - `/api/login` (POST): Log in as user or admin
-   - `/api/clockin` (POST): Clock in for the day (user only)
-   - `/api/stats` (GET): Get current user's attendance for the month
-   - `/api/admin/stats` (GET): Get all users' attendance (admin only)
+### Calendar System
+- **Monthly View**: Visual attendance calendar
+- **Color Coding**: Present (red), Absent (red border), Weekend (gray)
+- **Statistics**: Days present vs. total working days
+- **Working Days**: Monday-Thursday only
 
-5. **Middleware**
-   - `auth`: Checks for valid session token
-   - `adminOnly`: Checks if user is admin
+### Admin Features
+- **Admin Authentication**: Only @itskysolutions.com emails can be admins
+- **Dashboard Interface**: View all users and their attendance
+- **Search Functionality**: Filter by name or email
+- **User Management**: Delete users
+- **Export Features**: (Planned)
 
-6. **Frontend Serving**
-   - Serves static files from the `public` directory
+## ⚙️ Setup Instructions
 
-7. **Server Start**
-   - Starts the server on port 3000
+### Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn
+- Expo CLI (`npm install -g @expo/cli`)
+- Supabase project (see below)
+- Git
 
-**Each section in `server.js` is commented for clarity.**
+### Supabase Setup
+1. [Create a Supabase project](https://app.supabase.com/)
+2. Set up tables: `users`, `attendance`
+3. Enable Supabase Auth (email/password)
+4. Configure Row Level Security (RLS) as needed
+5. Get your Supabase URL and anon/public key
+6. Update `mobile-app/config/api.js` with your Supabase credentials
 
----
-
-## Setup Instructions
-
-### 1. Prerequisites
-- [Node.js](https://nodejs.org/) (v14 or higher recommended)
-
-### 2. Installation
-1. Clone or download this repository.
-2. Place your logo image as `itskylogo.png` in the `public` directory.
-3. In the project root, run:
-   ```bash
-   npm install
-   ```
-
-### 3. Running the App
-Start the server with:
+### Mobile App Setup
+1. Navigate to mobile app directory:
 ```bash
-node server.js
+cd mobile-app
 ```
-You should see:
+2. Install dependencies:
+```bash
+npm install
 ```
-Server running on http://localhost:3000
+3. Start Expo development server:
+```bash
+npx expo start
 ```
+4. Scan QR code with Expo Go app or run on simulator
 
-### 4. Accessing the App
-- **User Sign In:** [http://localhost:3000/signin.html](http://localhost:3000/signin.html)
-- **User Sign Up:** [http://localhost:3000/signup.html](http://localhost:3000/signup.html)
-- **Admin Sign In:** [http://localhost:3000/admin-signin.html](http://localhost:3000/admin-signin.html)
-- **Admin Dashboard:** [http://localhost:3000/admin.html](http://localhost:3000/admin.html)
+## 🔑 Configuration
 
----
+### Supabase Configuration
+- **Supabase URL** and **anon key**: Set in `mobile-app/config/api.js`
+- **Office Location**: Set in app logic (see DashboardScreen.js)
+- **Distance Limit**: Configurable in app logic
 
-## Usage
+### Environment Variables
+- Not required for mobile app; all config is in `config/api.js`
 
-### Staff
-- Register with your full name and a valid `@itskysolutions.com` email.
-- Log in and use the "Clock In" button to mark your attendance for the day.
-- View your attendance calendar for the current month.
+## 🛡️ Security Features
 
-### Admin
-- Use the default admin account:
-  - **Email:** `admin@itskysolutions.com`
-  - **Password:** `admin`
-- Log in via the Admin Sign In page.
-- On the admin dashboard, search for users by name or email and view their monthly attendance.
+- **Supabase Auth**: Secure session management
+- **Password Hashing**: Managed by Supabase
+- **Domain Validation**: Email domain restrictions for admin
+- **Token Expiration**: Automatic session timeout
+- **GPS Verification**: Distance-based validation
+- **Row Level Security**: Enforced in Supabase
 
----
+## 📊 API Endpoints (via Supabase)
 
-## Customization
-- **Logo:** Replace `itskylogo.png` in the `public` directory with your company logo.
-- **Branding:** All pages use "ITSky Attendance" as the title and header.
-- **Email Domain:** Only emails ending with `@itskysolutions.com` can register or log in.
+- **Auth**: Supabase Auth API
+- **Attendance**: Supabase table `attendance`
+- **Users**: Supabase table `users`
 
----
+All API calls are made via the Supabase client in the app.
 
-## Troubleshooting
-- **Port in use:** If you see `EADDRINUSE`, stop all running servers or restart your computer.
-- **Database issues:** If you change the database schema, delete `attendance.db` and restart the server.
-- **JSON parse errors:** Usually caused by backend errors or database issues. Check your terminal for errors and restart the server if needed.
+## 🐞 Troubleshooting
 
----
+- **GPS Not Working**: Check location permissions
+- **API Connection**: Verify Supabase URL and anon key
+- **Build Errors**: Clear cache and reinstall dependencies
+- **Expo Issues**: Use Expo Go for testing
 
-## License
-MIT 
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## 📞 Support
+
+For support and questions:
+- Create an issue on GitHub
+- Check the troubleshooting section
+- Review the mobile app documentation 
