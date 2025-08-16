@@ -39,6 +39,7 @@ import * as Sharing from 'expo-sharing';
 export default function AdminDashboardScreen({ navigation }) {
   // State variables for admin email, loading, refreshing, and stats
   const [adminEmail, setAdminEmail] = useState('');
+  const [adminName, setAdminName] = useState('Administrator');
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState(null);
@@ -56,6 +57,42 @@ export default function AdminDashboardScreen({ navigation }) {
     try {
       const email = await AsyncStorage.getItem('userEmail');
       setAdminEmail(email);
+      console.log('Admin email:', email);
+      
+      // Try Auth metadata first
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        const metaName = !error ? data?.user?.user_metadata?.name : null;
+        console.log('Admin auth metadata name:', metaName);
+        if (metaName && typeof metaName === 'string' && metaName.trim()) {
+          console.log('Using admin auth metadata name:', metaName.trim());
+          setAdminName(metaName.trim());
+          return;
+        }
+      } catch (e) {
+        console.log('Error getting auth metadata:', e);
+      }
+
+      // Then try users table by email
+      if (email) {
+        console.log('Trying to get admin username by email:', email);
+        const { data: profile, error: profErr } = await supabase
+          .from('users')
+          .select('username')
+          .eq('email', email)
+          .single();
+        console.log('Admin profile by email result:', { data: profile, error: profErr });
+        if (!profErr && profile?.username) {
+          console.log('Using admin username from email lookup:', profile.username);
+          setAdminName(profile.username);
+          return;
+        }
+        // Fallback: nice name from email local-part
+        const local = email.split('@')[0];
+        const fallbackName = local.charAt(0).toUpperCase() + local.slice(1);
+        console.log('Using admin fallback name:', fallbackName);
+        setAdminName(fallbackName);
+      }
     } catch (error) {
       console.error('Error loading admin data:', error);
     }
@@ -141,7 +178,7 @@ export default function AdminDashboardScreen({ navigation }) {
           text: 'Logout',
           style: 'destructive',
           onPress: async () => {
-            await AsyncStorage.multiRemove(['userToken', 'userEmail', 'isAdmin']);
+            await AsyncStorage.multiRemove(['userId', 'userToken', 'userEmail', 'isAdmin']);
             navigation.replace('Login');
           },
         },
@@ -265,7 +302,7 @@ export default function AdminDashboardScreen({ navigation }) {
       </View>
 
       <View style={styles.adminInfo}>
-        <Text style={styles.adminText}>Welcome, {adminEmail}</Text>
+        <Text style={styles.adminText}>Greetings, {adminName}</Text>
         <Text style={styles.adminRole}>Administrator</Text>
       </View>
 

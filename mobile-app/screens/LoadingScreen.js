@@ -15,6 +15,8 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Image } from 'react-native';
 // Import AsyncStorage for local storage
 import AsyncStorage from '@react-native-async-storage/async-storage';
+// Import Supabase client for session restoration
+import { supabase } from '../config/api';
 
 // Main LoadingScreen component
 export default function LoadingScreen({ navigation }) {
@@ -26,15 +28,19 @@ export default function LoadingScreen({ navigation }) {
   // Function to check authentication and route user
   const checkAuthStatus = async () => {
     try {
-      // Retrieve token, email, and admin status from storage
-      const token = await AsyncStorage.getItem('userToken');
+      // First, try to restore Supabase session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('Session restoration result:', { session: !!session, error: sessionError });
+
+      // Retrieve persisted session keys
       const email = await AsyncStorage.getItem('userEmail');
       const isAdmin = await AsyncStorage.getItem('isAdmin');
 
       // Simulate loading time for user experience
       await new Promise(resolve => setTimeout(resolve, 1500));
 
-      if (token && email) {
+      // Check if we have a valid session or stored credentials
+      if (session || email) {
         // Route to appropriate dashboard based on user type
         if (isAdmin === 'true') {
           navigation.replace('AdminDashboard');

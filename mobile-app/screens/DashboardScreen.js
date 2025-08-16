@@ -33,6 +33,23 @@ import * as Location from 'expo-location';
 // Import Supabase client for API calls
 import { supabase } from '../config/api';
 
+// Helper: convert ISO timestamp to UTC+1 display string
+function toUTCPlus1(isoString) {
+  try {
+    const date = new Date(isoString);
+    const plus1 = new Date(date.getTime() + 60 * 60 * 1000);
+    const yyyy = plus1.getFullYear();
+    const mm = String(plus1.getMonth() + 1).padStart(2, '0');
+    const dd = String(plus1.getDate()).padStart(2, '0');
+    const hh = String(plus1.getHours()).padStart(2, '0');
+    const min = String(plus1.getMinutes()).padStart(2, '0');
+    const ss = String(plus1.getSeconds()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
+  } catch (e) {
+    return isoString;
+  }
+}
+
 // DashboardScreen Component
 // Main dashboard interface for authenticated users. Handles:
 // - User authentication status
@@ -52,6 +69,7 @@ export default function DashboardScreen({ navigation }) {
   const [attendanceStats, setAttendanceStats] = useState(null); // User's attendance data
   const [alreadyClockedIn, setAlreadyClockedIn] = useState(false); // Prevents duplicate clock-ins
   const [selectedDayInfo, setSelectedDayInfo] = useState(null); // Info for clicked day
+  const [username, setUsername] = useState('User');
 
   // Component initialization effect
   // Runs on component mount to set up user data and check authentication
@@ -74,14 +92,28 @@ export default function DashboardScreen({ navigation }) {
     }
   };
 
-  // Load user email from local storage
-  // Displays the current user's email in the welcome message
+  // Load user email and friendly name
   const loadUserData = async () => {
     try {
       const email = await AsyncStorage.getItem('userEmail');
       setUserEmail(email);
+      if (email) {
+        const { data, error } = await supabase
+          .from('users')
+          .select('name')
+          .eq('email', email)
+          .single();
+        if (!error && data && data.name) {
+          setUsername(data.name);
+        } else {
+          setUsername(email);
+        }
+      } else {
+        setUsername('User');
+      }
     } catch (error) {
       console.error('Error loading user data:', error);
+      setUsername('User');
     }
   };
 
@@ -123,7 +155,7 @@ export default function DashboardScreen({ navigation }) {
       const todayRecord = attendanceRecords.find(record => record.date === today);
       setAlreadyClockedIn(!!todayRecord);
       if (todayRecord) {
-        setClockInMessage(`\u2705 Already clocked in today at ${todayRecord.time}`);
+        setClockInMessage(`\u2705 Already clocked in today at ${toUTCPlus1(todayRecord.full).slice(11)} (UTC+1)`);
         setStatusIndicator('#4CAF50');
       }
     } catch (error) {
@@ -231,7 +263,7 @@ export default function DashboardScreen({ navigation }) {
           text: 'Logout',
           style: 'destructive',
           onPress: async () => {
-            await AsyncStorage.multiRemove(['userToken', 'userEmail', 'isAdmin']);
+            await AsyncStorage.multiRemove(['userId', 'userToken', 'userEmail', 'isAdmin']);
             navigation.replace('Login');
           },
         },
@@ -360,8 +392,8 @@ export default function DashboardScreen({ navigation }) {
             <Text style={{ fontSize: 16, fontWeight: 'bold' }}>
               {selectedDayInfo.date}
             </Text>
-            {selectedDayInfo.isPresent && selectedDayInfo.time ? (
-              <Text style={{ fontSize: 15, color: '#4CAF50' }}>Clocked in at: {selectedDayInfo.time}</Text>
+            {selectedDayInfo.isPresent && selectedDayInfo.full ? (
+              <Text style={{ fontSize: 15, color: '#4CAF50' }}>Clocked in at: {toUTCPlus1(selectedDayInfo.full).slice(11)} (UTC+1)</Text>
             ) : (
               <Text style={{ fontSize: 15, color: '#dc2626' }}>Not clocked in</Text>
             )}
@@ -386,7 +418,7 @@ export default function DashboardScreen({ navigation }) {
             style={styles.headerLogo}
             resizeMode="contain"
           />
-          <Text style={styles.welcomeText}>Welcome, {userEmail}!</Text>
+          <Text style={styles.welcomeText}>Welcome, {username}!</Text>
         </View>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Text style={styles.logoutButtonText}>Logout</Text>
