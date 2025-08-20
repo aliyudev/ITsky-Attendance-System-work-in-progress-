@@ -32,21 +32,32 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 // Import Supabase client for API calls
 import { supabase } from '../config/api';
+import { OFFICE, OFFICE_RADIUS_METERS, isOfficeConfigSet } from '../config/location';
 
 // Helper: convert ISO timestamp to UTC+1 display string
-function toUTCPlus1(isoString) {
+function formatLocalTime(isoString) {
   try {
     const date = new Date(isoString);
-    const plus1 = new Date(date.getTime() + 60 * 60 * 1000);
-    const yyyy = plus1.getFullYear();
-    const mm = String(plus1.getMonth() + 1).padStart(2, '0');
-    const dd = String(plus1.getDate()).padStart(2, '0');
-    const hh = String(plus1.getHours()).padStart(2, '0');
-    const min = String(plus1.getMinutes()).padStart(2, '0');
-    const ss = String(plus1.getSeconds()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   } catch (e) {
     return isoString;
+  }
+}
+
+// Calculate distance between two geo points in meters (Haversine formula)
+function haversineMeters(pointA, pointB) {
+  try {
+    const toRadians = (deg) => (deg * Math.PI) / 180;
+    const earthRadiusMeters = 6371000;
+    const dLat = toRadians(pointB.lat - pointA.lat);
+    const dLng = toRadians(pointB.lng - pointA.lng);
+    const lat1 = toRadians(pointA.lat);
+    const lat2 = toRadians(pointB.lat);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+    const c = 2 * Math.asin(Math.sqrt(a));
+    return earthRadiusMeters * c;
+  } catch (e) {
+    return Number.POSITIVE_INFINITY;
   }
 }
 
@@ -121,7 +132,8 @@ export default function DashboardScreen({ navigation }) {
   // Fetches data from Supabase and updates the UI
   const loadCalendar = async () => {
     try {
-      const userId = await AsyncStorage.getItem('userId');
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || await AsyncStorage.getItem('userId');
       const now = new Date();
       const year = now.getFullYear();
       const month = (now.getMonth() + 1).toString().padStart(2, '0');
@@ -155,7 +167,7 @@ export default function DashboardScreen({ navigation }) {
       const todayRecord = attendanceRecords.find(record => record.date === today);
       setAlreadyClockedIn(!!todayRecord);
       if (todayRecord) {
-        setClockInMessage(`\u2705 Already clocked in today at ${toUTCPlus1(todayRecord.full).slice(11)} (UTC+1)`);
+        setClockInMessage(`\u2705 Already clocked in today at ${formatLocalTime(todayRecord.full)}`);
         setStatusIndicator('#4CAF50');
       }
     } catch (error) {
@@ -227,12 +239,29 @@ export default function DashboardScreen({ navigation }) {
         throw new Error('GPS location is required. Please allow location access.');
       }
       const { coords } = position;
-      const userId = await AsyncStorage.getItem('userId');
-      // Insert attendance record in Supabase
+      // Enforce office proximity if configured
+      if (isOfficeConfigSet()) {
+        const distance = haversineMeters(
+          { lat: coords.latitude, lng: coords.longitude },
+          OFFICE
+        );
+        setLocationStatus(`Distance to office: ${Math.round(distance)} m`);
+        if (distance > OFFICE_RADIUS_METERS) {
+          setStatusIndicator('#dc2626');
+          Alert.alert(
+            'Too far from office',
+            `You are ${Math.round(distance)} m away. Move within ${OFFICE_RADIUS_METERS} m to clock in.`,
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+      } else {
+        setLocationStatus('GPS acquired');
+      }
+      // Insert attendance record in Supabase (user_id set server-side by trigger)
       const { error } = await supabase
         .from('attendance')
         .insert([{
-          user_id: userId,
           location_lat: coords.latitude,
           location_lng: coords.longitude,
           accuracy: coords.accuracy
@@ -358,6 +387,7 @@ export default function DashboardScreen({ navigation }) {
           setSelectedDayInfo({
             date: `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`,
             time: presentRecord ? presentRecord.time : null,
+            full: presentRecord ? presentRecord.full : null,
             isPresent
           });
         }
@@ -393,7 +423,7 @@ export default function DashboardScreen({ navigation }) {
               {selectedDayInfo.date}
             </Text>
             {selectedDayInfo.isPresent && selectedDayInfo.full ? (
-              <Text style={{ fontSize: 15, color: '#4CAF50' }}>Clocked in at: {toUTCPlus1(selectedDayInfo.full).slice(11)} (UTC+1)</Text>
+              <Text style={{ fontSize: 15, color: '#4CAF50' }}>Clocked in at: {formatLocalTime(selectedDayInfo.full)}</Text>
             ) : (
               <Text style={{ fontSize: 15, color: '#dc2626' }}>Not clocked in</Text>
             )}

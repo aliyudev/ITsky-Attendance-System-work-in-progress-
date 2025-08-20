@@ -78,13 +78,13 @@ export default function AdminDashboardScreen({ navigation }) {
         console.log('Trying to get admin username by email:', email);
         const { data: profile, error: profErr } = await supabase
           .from('users')
-          .select('username')
+          .select('name')
           .eq('email', email)
           .single();
         console.log('Admin profile by email result:', { data: profile, error: profErr });
-        if (!profErr && profile?.username) {
-          console.log('Using admin username from email lookup:', profile.username);
-          setAdminName(profile.username);
+        if (!profErr && profile?.name) {
+          console.log('Using admin name from email lookup:', profile.name);
+          setAdminName(profile.name);
           return;
         }
         // Fallback: nice name from email local-part

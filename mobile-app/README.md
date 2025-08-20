@@ -52,6 +52,13 @@ The mobile app is designed to match the web version's look and feel:
 5. Get your Supabase URL and anon/public key
 6. Update `config/api.js` with your Supabase credentials
 
+## 📍 Location Configuration
+
+- Set your office coordinates and allowed radius in `config/location.js`:
+  - `OFFICE.lat`, `OFFICE.lng`
+  - `OFFICE_RADIUS_METERS`
+- If `OFFICE` is not set (left as `null`), the app will skip proximity enforcement and only record GPS with the attendance.
+
 ### Installation
 ```bash
 cd mobile-app
@@ -84,7 +91,10 @@ The app connects to Supabase for all authentication and data operations. Make su
 ## 🗄️ Database Schema
 
 - **users**: id, email, name, is_admin
-- **attendance**: id, user_id, clock_in_time
+- **attendance**: id, user_id, clock_in_time, location_lat, location_lng, accuracy
+
+Notes
+- `clock_in_time` uses timestamptz (UTC). The app displays local device time.
 
 ## 🧩 UI Components
 
